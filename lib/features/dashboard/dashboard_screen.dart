@@ -24,9 +24,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   String adminName = 'مدير النظام';
-  String _timeString = '';
-  String _dateString = '';
-  Timer? _timer;
 
   // متغيرات الإحصائيات الديناميكية
   int totalGuards = 0;
@@ -38,14 +35,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _loadAdminName();
     _loadStatistics(); // جلب الأعداد الحقيقية
-    _updateTime();
-    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _updateTime());
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
   }
 
   // جلب الأعداد من قاعدة البيانات
@@ -91,28 +80,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     } catch (e) {}
-  }
-
-  void _updateTime() {
-    final now = DateTime.now();
-    int h = now.hour;
-    int m = now.minute;
-    String ampm = h >= 12 ? 'م' : 'ص';
-    if (h == 0) h = 12;
-    if (h > 12) h -= 12;
-    String mStr = m.toString().padLeft(2, '0');
-    
-    final List<String> months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-    final List<String> days = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
-    String dayName = days[now.weekday - 1];
-    String monthName = months[now.month - 1];
-
-    if (mounted) {
-      setState(() {
-        _timeString = '$h:$mStr $ampm';
-        _dateString = '$dayName، ${now.day} $monthName';
-      });
-    }
   }
 
   Future<void> _refreshOnReturn(BuildContext context, Widget screen) async {
@@ -174,16 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           const SizedBox(height: 4),
                           const Text('مشرف الوردية', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Cairo')),
                           const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              const Icon(Icons.calendar_today_rounded, size: 13, color: Colors.white70),
-                              const SizedBox(width: 5),
-                              Expanded(child: Text(_dateString, style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'Cairo'))),
-                              const Icon(Icons.access_time_rounded, size: 13, color: Colors.white70),
-                              const SizedBox(width: 5),
-                              Text(_timeString, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Cairo')),
-                            ],
-                          ),
+                          const _ClockWidget(),
                         ],
                       ),
                     ),
@@ -271,6 +229,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ودجت مستقلة لعرض الوقت والتاريخ — تتحدث لوحدها كل ثانية
+// من غير ما تعمل rebuild لباقي شاشة الداشبورد
+class _ClockWidget extends StatefulWidget {
+  const _ClockWidget();
+
+  @override
+  State<_ClockWidget> createState() => _ClockWidgetState();
+}
+
+class _ClockWidgetState extends State<_ClockWidget> {
+  Timer? _timer;
+  String _timeString = '';
+  String _dateString = '';
+
+  static const List<String> _months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  static const List<String> _days = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTime();
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _updateTime());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _updateTime() {
+    final now = DateTime.now();
+    int h = now.hour;
+    String ampm = h >= 12 ? 'م' : 'ص';
+    if (h == 0) h = 12;
+    if (h > 12) h -= 12;
+    String mStr = now.minute.toString().padLeft(2, '0');
+    String dayName = _days[now.weekday - 1];
+    String monthName = _months[now.month - 1];
+
+    if (!mounted) return;
+    setState(() {
+      _timeString = '$h:$mStr $ampm';
+      _dateString = '$dayName، ${now.day} $monthName';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.calendar_today_rounded, size: 13, color: Colors.white70),
+        const SizedBox(width: 5),
+        Expanded(child: Text(_dateString, style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'Cairo'))),
+        const Icon(Icons.access_time_rounded, size: 13, color: Colors.white70),
+        const SizedBox(width: 5),
+        Text(_timeString, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Cairo')),
+      ],
     );
   }
 }

@@ -1,0 +1,42 @@
+name: amantak2
+description: نظام محلي لإدارة أفراد الأمن والحضور والعهد والجزاءات.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  image_picker: ^1.2.3
+  path_provider: ^2.1.6
+  sqflite: ^2.4.2+1
+  path: ^1.9.1
+
+  excel: ^4.0.6
+  share_plus: ^9.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  # Required because flutter_localizations is enabled and Flutter runs the
+  # localization generation target during the build.
+  generate: true
+  uses-material-design: true
+
+  # لإضافة خط Cairo لاحقاً:
+  # assets:
+  #   - assets/fonts/
+  # fonts:
+  #   - family: Cairo
+  #     fonts:
+  #       - asset: assets/fonts/Cairo-Regular.ttf
+  #       - asset: assets/fonts/Cairo-Bold.ttf
+  #         weight: 700

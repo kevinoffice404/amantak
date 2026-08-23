@@ -61,7 +61,7 @@ android {
     
     externalNativeBuild {
         cmake {
-            version "4.3.0"
+            version "3.22.1" // تم تعديله ليطابق إصدار السيرفر بنجاح
             path "CMakeLists.txt"
         }
     }

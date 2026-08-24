@@ -4,6 +4,8 @@ import '../../core/theme/app_colors.dart';
 
 // استدعاء مكونات الزجاج
 import '../../core/widgets/glass.dart';
+// استدعاء شاشة التفاصيل المالية (يجب إنشاء هذا الملف)
+import 'financial_details_screen.dart'; 
 
 class GuardDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> person;
@@ -27,6 +29,11 @@ class GuardDetailsScreen extends StatelessWidget {
         : (person['id_status'] ?? 'غير محدد');
     String? frontImg = person['id_front_image'];
     String? backImg = person['id_back_image'];
+
+    // افتراض قيم مالية (قم بتحديثها لتقرأ من قاعدة البيانات لاحقاً)
+    double basicSalary = person['basic_salary']?.toDouble() ?? 9000.0;
+    double totalAdvances = person['total_advances']?.toDouble() ?? 1000.0;
+    double totalPenalties = person['total_penalties']?.toDouble() ?? 250.0;
 
     Color roleColor = (role == 'مدير الأمن' || role == 'مسؤول') ? Colors.redAccent : (role == 'مشرف' ? AppColors.accentGold : Colors.green);
     IconData roleIcon = (role == 'مدير الأمن' || role == 'مسؤول') ? Icons.admin_panel_settings_rounded : (role == 'مشرف' ? Icons.supervised_user_circle_rounded : Icons.security_rounded);
@@ -145,6 +152,45 @@ class GuardDetailsScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 30),
+            
+            // --- الزر الجديد: التفاصيل المالية ---
+            SizedBox(
+              width: double.infinity, 
+              height: 55,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FinancialDetailsScreen(
+                        guardName: name, 
+                        basicSalary: basicSalary, 
+                        totalAdvances: totalAdvances, 
+                        totalPenalties: totalPenalties, 
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.account_balance_wallet_outlined, size: 28),
+                label: const Text(
+                  'التفاصيل المالية والراتب',
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Cairo', 
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryNavy, 
+                  foregroundColor: Colors.white,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 30),
           ],

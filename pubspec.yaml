@@ -19,9 +19,7 @@ dependencies:
 
   excel: ^4.0.6
   share_plus: ^9.0.0
-  
-  # المكتبات الجديدة للـ PDF تم وضعها في المكان الصحيح
-    pdf: ^3.13.0
+  pdf: ^3.13.0
   printing: ^5.15.0
 
 dev_dependencies:
@@ -30,8 +28,6 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 flutter:
-  # Required because flutter_localizations is enabled and Flutter runs the
-  # localization generation target during the build.
   generate: true
   uses-material-design: true
 

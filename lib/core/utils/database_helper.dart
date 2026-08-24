@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -10,7 +9,8 @@ class DatabaseHelper {
   DatabaseHelper._init();
 
   static const _databaseName = 'security_manager.db';
-  static const _databaseVersion = 3;
+  // 🚨 تم رفع الإصدار إلى 4 لتطبيق التعديلات المالية 🚨
+  static const _databaseVersion = 4;
 
   Future<Database> get database async {
     if (_database != null && _database!.isOpen) return _database!;
@@ -44,9 +44,10 @@ class DatabaseHelper {
         id_front_image $textNullable,
         id_back_image $textNullable,
         id_expiry_date $textNullable,
-        id_status $textNullable
+        id_status $textNullable,
+        basic_salary REAL DEFAULT 9000.0 
       )
-    ''');
+    '''); // تمت إضافة basic_salary هنا
 
     await db.execute('''
       CREATE TABLE attendance (
@@ -77,6 +78,16 @@ class DatabaseHelper {
       )
     ''');
 
+    // جدول السلف الجديد
+    await db.execute('''
+      CREATE TABLE advances (
+        id $idType,
+        guard_name $textType,
+        amount $textType,
+        date $textType
+      )
+    ''');
+
     await _createIndexes(db);
   }
 
@@ -86,22 +97,34 @@ class DatabaseHelper {
     int newVersion,
   ) async {
     if (oldVersion < 2) {
-      await db.execute(
-        'ALTER TABLE guards ADD COLUMN id_front_image TEXT',
-      );
-      await db.execute(
-        'ALTER TABLE guards ADD COLUMN id_back_image TEXT',
-      );
-      await db.execute(
-        'ALTER TABLE guards ADD COLUMN id_expiry_date TEXT',
-      );
-      await db.execute(
-        'ALTER TABLE guards ADD COLUMN id_status TEXT',
-      );
+      await db.execute('ALTER TABLE guards ADD COLUMN id_front_image TEXT');
+      await db.execute('ALTER TABLE guards ADD COLUMN id_back_image TEXT');
+      await db.execute('ALTER TABLE guards ADD COLUMN id_expiry_date TEXT');
+      await db.execute('ALTER TABLE guards ADD COLUMN id_status TEXT');
     }
 
     if (oldVersion < 3) {
       await _createIndexes(db);
+    }
+
+    // 🚨 التحديث الجديد للإصدار 4 (إضافة السلف والراتب) 🚨
+    if (oldVersion < 4) {
+      // إضافة الراتب للجدول القديم
+      await db.execute('ALTER TABLE guards ADD COLUMN basic_salary REAL DEFAULT 9000.0');
+      
+      // إنشاء جدول السلف
+      await db.execute('''
+        CREATE TABLE advances (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          guard_name TEXT NOT NULL,
+          amount TEXT NOT NULL,
+          date TEXT NOT NULL
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_advances_guard_date '
+        'ON advances (guard_name, date, id)',
+      );
     }
   }
 
@@ -149,50 +172,27 @@ class DatabaseHelper {
     final guard = existing.first;
     final name = guard['name'] as String;
     final sameNameCount = Sqflite.firstIntValue(
-          await db.rawQuery(
-            'SELECT COUNT(*) FROM guards WHERE name = ?',
-            [name],
-          ),
-        ) ??
-        1;
+          await db.rawQuery('SELECT COUNT(*) FROM guards WHERE name = ?', [name]),
+        ) ?? 1;
+    
     final imagePaths = <String>{
       if (guard['id_front_image'] is String) guard['id_front_image'] as String,
       if (guard['id_back_image'] is String) guard['id_back_image'] as String,
     };
 
     final deleted = await db.transaction<int>((txn) async {
-      // Historical records are name-based in this schema. Only cascade them
-      // when the name is unique; this avoids deleting another legacy record
-      // if an old database contains duplicate names.
       if (sameNameCount == 1) {
-        await txn.delete(
-          'attendance',
-          where: 'guard_name = ?',
-          whereArgs: [name],
-        );
-        await txn.delete(
-          'penalties',
-          where: 'guard_name = ?',
-          whereArgs: [name],
-        );
-        await txn.update(
-          'equipment',
-          {'assigned_to': 'المركز'},
-          where: 'assigned_to = ?',
-          whereArgs: [name],
-        );
+        await txn.delete('attendance', where: 'guard_name = ?', whereArgs: [name]);
+        await txn.delete('penalties', where: 'guard_name = ?', whereArgs: [name]);
+        await txn.delete('advances', where: 'guard_name = ?', whereArgs: [name]); // مسح السلف
+        await txn.update('equipment', {'assigned_to': 'المركز'}, where: 'assigned_to = ?', whereArgs: [name]);
       }
-      return txn.delete(
-        'guards',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      return txn.delete('guards', where: 'id = ?', whereArgs: [id]);
     });
 
     if (deleted > 0) {
       await _deleteFiles(imagePaths);
     }
-
     return deleted;
   }
 
@@ -219,43 +219,18 @@ class DatabaseHelper {
     final newName = values['name'] as String? ?? oldName;
 
     return db.transaction<int>((txn) async {
-      final updated = await txn.update(
-        'guards',
-        values,
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+      final updated = await txn.update('guards', values, where: 'id = ?', whereArgs: [id]);
 
-      // Keep historical records linked when the guard's display name changes.
       final oldNameCount = Sqflite.firstIntValue(
-            await txn.rawQuery(
-              'SELECT COUNT(*) FROM guards WHERE name = ?',
-              [oldName],
-            ),
-          ) ??
-          1;
+            await txn.rawQuery('SELECT COUNT(*) FROM guards WHERE name = ?', [oldName]),
+          ) ?? 1;
 
       if (updated > 0 && newName != oldName && oldNameCount == 1) {
-        await txn.update(
-          'attendance',
-          {'guard_name': newName},
-          where: 'guard_name = ?',
-          whereArgs: [oldName],
-        );
-        await txn.update(
-          'penalties',
-          {'guard_name': newName},
-          where: 'guard_name = ?',
-          whereArgs: [oldName],
-        );
-        await txn.update(
-          'equipment',
-          {'assigned_to': newName},
-          where: 'assigned_to = ?',
-          whereArgs: [oldName],
-        );
+        await txn.update('attendance', {'guard_name': newName}, where: 'guard_name = ?', whereArgs: [oldName]);
+        await txn.update('penalties', {'guard_name': newName}, where: 'guard_name = ?', whereArgs: [oldName]);
+        await txn.update('advances', {'guard_name': newName}, where: 'guard_name = ?', whereArgs: [oldName]); // تحديث اسم الحارس في السلف
+        await txn.update('equipment', {'assigned_to': newName}, where: 'assigned_to = ?', whereArgs: [oldName]);
       }
-
       return updated;
     });
   }
@@ -278,8 +253,50 @@ class DatabaseHelper {
     );
   }
 
-  // -------------------- Attendance --------------------
+  // -------------------- Financials (الراتب والسلف) --------------------
 
+  // 1. تحديث الراتب الأساسي
+  Future<int> updateGuardSalary(int id, double newSalary) async {
+    final db = await database;
+    return db.update(
+      'guards',
+      {'basic_salary': newSalary},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // 2. تسجيل سلفة جديدة
+  Future<int> insertAdvance(Map<String, dynamic> advance) async {
+    final db = await database;
+    return db.insert('advances', advance);
+  }
+
+  // 3. جلب جميع البيانات المالية للحارس (لخصمها من الراتب)
+  Future<Map<String, double>> getGuardFinancialTotals(String guardName) async {
+    final db = await database;
+    
+    // جلب وجمع الجزاءات
+    final penalties = await db.query('penalties', columns: ['amount'], where: 'guard_name = ?', whereArgs: [guardName]);
+    double totalPenalties = 0;
+    for (var p in penalties) {
+      totalPenalties += double.tryParse(p['amount'].toString()) ?? 0.0;
+    }
+
+    // جلب وجمع السلف
+    final advances = await db.query('advances', columns: ['amount'], where: 'guard_name = ?', whereArgs: [guardName]);
+    double totalAdvances = 0;
+    for (var a in advances) {
+      totalAdvances += double.tryParse(a['amount'].toString()) ?? 0.0;
+    }
+
+    return {
+      'total_penalties': totalPenalties,
+      'total_advances': totalAdvances,
+    };
+  }
+
+  // -------------------- Attendance --------------------
   Future<int> insertAttendance(Map<String, dynamic> record) async {
     final db = await database;
     return db.insert('attendance', record);
@@ -291,7 +308,6 @@ class DatabaseHelper {
   }
 
   // -------------------- Penalties --------------------
-
   Future<int> insertPenalty(Map<String, dynamic> penalty) async {
     final db = await database;
     return db.insert('penalties', penalty);
@@ -303,7 +319,6 @@ class DatabaseHelper {
   }
 
   // -------------------- Equipment --------------------
-
   Future<int> insertEquipment(Map<String, dynamic> equipment) async {
     final db = await database;
     return db.insert('equipment', equipment);
@@ -325,7 +340,6 @@ class DatabaseHelper {
   }
 
   // -------------------- Destructive reset --------------------
-
   Future<void> clearAllData() async {
     final db = await database;
 
@@ -346,6 +360,7 @@ class DatabaseHelper {
       await txn.delete('attendance');
       await txn.delete('equipment');
       await txn.delete('penalties');
+      await txn.delete('advances'); // تفريغ جدول السلف
       await txn.delete('guards');
     });
 
@@ -373,9 +388,7 @@ class DatabaseHelper {
         if (await file.exists()) {
           await file.delete();
         }
-      } catch (_) {
-        // A missing/unreadable image must not prevent the database operation.
-      }
+      } catch (_) {}
     }
   }
 }

@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.myflutter.amantak"
-    compileSdk 36
+    compileSdkVersion 34 // 🚨 تم التعديل إلى 34 لضمان التوافق التام
     ndkVersion "29.0.14206865"
 
     compileOptions {
@@ -38,8 +38,8 @@ android {
 
     defaultConfig {
         applicationId "com.example.myflutter.amantak"
-        minSdkVersion flutter.minSdkVersion
-        targetSdk 35
+        minSdkVersion 21 // 🚨 هذا هو التعديل الأهم لمكتبة الـ PDF
+        targetSdkVersion 34 // 🚨 تم التعديل إلى 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         

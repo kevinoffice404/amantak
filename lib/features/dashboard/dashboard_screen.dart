@@ -5,8 +5,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart'; 
 
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/glass.dart';
 import '../../core/utils/database_helper.dart'; 
+
+// 🚨 التعديل الأول: استدعاء ملفات النوافذ الزجاجية بشكل صحيح 🚨
+import '../../core/widgets/glass.dart' hide GlassActionButton;
+import '../../core/widgets/glass_dialog.dart';
 
 // استدعاء جميع الشاشات
 import '../attendance/attendance_screen.dart';
@@ -30,7 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int todayAttendance = 0;
   int totalEquipment = 0;
   
-  // 🚨 متغير لتخزين التنبيهات الذكية
+  // متغير لتخزين التنبيهات الذكية
   List<Map<String, String>> _alerts = [];
 
   @override
@@ -59,7 +62,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final equipmentCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM equipment')) ?? 0;
       
-      // 🚨 جلب التنبيهات الذكية
+      // جلب التنبيهات الذكية
       final alerts = await DatabaseHelper.instance.getSmartAlerts();
 
       if (mounted) {
@@ -101,7 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
   }
 
-  // 🚨 نافذة عرض التنبيهات الذكية الزجاجية
+  // نافذة عرض التنبيهات الذكية الزجاجية
   void _showAlertsDialog(BuildContext context) {
     showGlassDialog(
       context: context,
@@ -148,6 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             GlassActionButton(
               label: 'إغلاق',
+              icon: Icons.close_rounded, // 🚨 التعديل الثاني: إضافة الأيقونة الإجبارية هنا 🚨
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -162,7 +166,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       title: 'لوحة التحكم',
       showBack: false, 
       actions: [
-        // 🚨 أيقونة التنبيهات (الجرس)
+        // أيقونة التنبيهات (الجرس)
         Stack(
           alignment: Alignment.center,
           children: [

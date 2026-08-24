@@ -24,8 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.myflutter.amantak"
-    // 🚨 الحل الجذري: إجبار الكومبايلر على استخدام 34 بدلاً من متغير فلاتر
-    compileSdk = 34
+    compileSdk 36
     ndkVersion "29.0.14206865"
 
     compileOptions {
@@ -39,10 +38,8 @@ android {
 
     defaultConfig {
         applicationId "com.example.myflutter.amantak"
-        // 🚨 إجبار الحد الأدنى ليكون 21 لدعم الـ PDF
-        minSdk = 21
-        // 🚨 إجبار التارجت ليكون 34
-        targetSdk = 34
+        minSdk 21
+        targetSdk 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         

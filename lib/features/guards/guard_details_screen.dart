@@ -5,7 +5,12 @@ import '../../core/theme/app_colors.dart';
 // استدعاء مكونات الزجاج
 import '../../core/widgets/glass.dart';
 // استدعاء شاشة التفاصيل المالية (يجب إنشاء هذا الملف)
-import 'financial_details_screen.dart'; 
+import 'financial_details_screen.dart';
+// إذا كان الملف داخل مجلد core/database
+import '../../core/database/database_helper.dart'; 
+
+// أو استخدم المسار العام (استبدل المسار_الصحيح بمكان الملف عندك)
+import 'package:amantak2/المسار_الصحيح/database_helper.dart';
 
 class GuardDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> person;

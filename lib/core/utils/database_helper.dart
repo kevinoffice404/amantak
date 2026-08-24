@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:amantak2/core/utils/database_helper.dart';
-
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -145,7 +143,7 @@ class DatabaseHelper {
     );
   }
 
-  // -------------------- Guards --------------------
+  // -------------------- Guards (الحراس) --------------------
 
   Future<int> insertGuard(Map<String, dynamic> guard) async {
     final db = await database;
@@ -255,7 +253,7 @@ class DatabaseHelper {
     );
   }
 
-  // -------------------- Financials (الراتب والسلف) --------------------
+  // -------------------- Financials (الراتب والسلف والجزاءات) --------------------
 
   // 1. تحديث الراتب الأساسي
   Future<int> updateGuardSalary(int id, double newSalary) async {
@@ -298,7 +296,66 @@ class DatabaseHelper {
     };
   }
 
-  // -------------------- Attendance --------------------
+  // -------------------- Smart Alerts (التنبيهات الذكية) --------------------
+  
+  // دالة لجلب قائمة بالتنبيهات الذكية (مالية وإدارية)
+  Future<List<Map<String, String>>> getSmartAlerts() async {
+    final db = await database;
+    List<Map<String, String>> alerts = [];
+    final today = DateTime.now();
+
+    final guards = await db.query('guards');
+    for (var guard in guards) {
+      String name = guard['name'].toString();
+      
+      // 1. تنبيهات البطاقات المنتهية أو التي ستنتهي قريباً
+      String? expiryDateStr = guard['id_expiry_date']?.toString();
+      if (expiryDateStr != null && expiryDateStr.isNotEmpty) {
+        DateTime? expiryDate = DateTime.tryParse(expiryDateStr);
+        if (expiryDate != null) {
+          // حساب الفرق بالأيام بين تاريخ اليوم وتاريخ الانتهاء
+          final difference = DateTime(expiryDate.year, expiryDate.month, expiryDate.day)
+              .difference(DateTime(today.year, today.month, today.day))
+              .inDays;
+          
+          if (difference < 0) {
+            alerts.add({
+              'title': 'بطاقة منتهية',
+              'message': 'بطاقة الحارس ($name) منتهية منذ ${difference.abs()} يوم.',
+              'type': 'danger', // لون أحمر
+            });
+          } else if (difference <= 15) { // إذا تبقى 15 يوم أو أقل
+            alerts.add({
+              'title': 'تجديد بطاقة',
+              'message': 'بطاقة الحارس ($name) ستنتهي قريباً بعد $difference يوم.',
+              'type': 'warning', // لون برتقالي
+            });
+          }
+        }
+      }
+
+      // 2. تنبيهات مالية (سلف تتجاوز 50% من الراتب)
+      double basicSalary = guard['basic_salary'] != null 
+          ? double.tryParse(guard['basic_salary'].toString()) ?? 9000.0 
+          : 9000.0;
+          
+      final totals = await getGuardFinancialTotals(name);
+      double totalAdvances = totals['total_advances'] ?? 0.0;
+      
+      if (totalAdvances > (basicSalary / 2)) {
+        alerts.add({
+          'title': 'تجاوز الحد المالي للسلف',
+          'message': 'الحارس ($name) سحب سلف بقيمة ${totalAdvances.toStringAsFixed(0)} ج.م (أكثر من نصف راتبه الأساسي).',
+          'type': 'warning',
+        });
+      }
+    }
+
+    return alerts;
+  }
+
+  // -------------------- Attendance (الحضور والانصراف) --------------------
+  
   Future<int> insertAttendance(Map<String, dynamic> record) async {
     final db = await database;
     return db.insert('attendance', record);
@@ -309,7 +366,8 @@ class DatabaseHelper {
     return db.query('attendance', orderBy: 'action_date DESC, id DESC');
   }
 
-  // -------------------- Penalties --------------------
+  // -------------------- Penalties (الجزاءات) --------------------
+  
   Future<int> insertPenalty(Map<String, dynamic> penalty) async {
     final db = await database;
     return db.insert('penalties', penalty);
@@ -320,7 +378,8 @@ class DatabaseHelper {
     return db.query('penalties', orderBy: 'date DESC, id DESC');
   }
 
-  // -------------------- Equipment --------------------
+  // -------------------- Equipment (العهد) --------------------
+  
   Future<int> insertEquipment(Map<String, dynamic> equipment) async {
     final db = await database;
     return db.insert('equipment', equipment);
@@ -341,7 +400,8 @@ class DatabaseHelper {
     );
   }
 
-  // -------------------- Destructive reset --------------------
+  // -------------------- Destructive reset (مسح البيانات) --------------------
+  
   Future<void> clearAllData() async {
     final db = await database;
 

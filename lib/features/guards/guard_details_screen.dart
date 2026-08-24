@@ -156,22 +156,37 @@ class GuardDetailsScreen extends StatelessWidget {
             const SizedBox(height: 30),
             
             // --- الزر الجديد: التفاصيل المالية ---
+                        // --- الزر الجديد: التفاصيل المالية ---
             SizedBox(
               width: double.infinity, 
               height: 55,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FinancialDetailsScreen(
-                        guardName: name, 
-                        basicSalary: basicSalary, 
-                        totalAdvances: totalAdvances, 
-                        totalPenalties: totalPenalties, 
+                onPressed: () async {
+                  // 1. جلب الراتب الأساسي من بيانات الحارس (9000 بشكل افتراضي)
+                  double basicSalary = person['basic_salary'] != null 
+                      ? double.tryParse(person['basic_salary'].toString()) ?? 9000.0 
+                      : 9000.0;
+
+                  // 2. جلب إجمالي السلف والجزاءات من الداتا بيز
+                  final totals = await DatabaseHelper.instance.getGuardFinancialTotals(name);
+                  double totalAdvances = totals['total_advances'] ?? 0.0;
+                  double totalPenalties = totals['total_penalties'] ?? 0.0;
+
+                  // 3. فتح الشاشة بالأرقام الحقيقية!
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FinancialDetailsScreen(
+                          guardId: id, // 🚨 هذا هو السطر الذي كان مفقوداً ويسبب الخطأ! 🚨
+                          guardName: name, 
+                          basicSalary: basicSalary, 
+                          totalAdvances: totalAdvances, 
+                          totalPenalties: totalPenalties, 
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 },
                 icon: const Icon(Icons.account_balance_wallet_outlined, size: 28),
                 label: const Text(

@@ -25,6 +25,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+    pdf: ^3.11.1
+  printing: ^5.13.1
+  
+
 flutter:
   # Required because flutter_localizations is enabled and Flutter runs the
   # localization generation target during the build.

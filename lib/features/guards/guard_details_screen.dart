@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/database_helper.dart'; // 🚨 تم إضافة مسار قاعدة البيانات الصحيح هنا
 
 // استدعاء مكونات الزجاج
 import '../../core/widgets/glass.dart';
-// استدعاء شاشة التفاصيل المالية (يجب إنشاء هذا الملف)
+// استدعاء شاشة التفاصيل المالية
 import 'financial_details_screen.dart';
-// إذا كان الملف داخل مجلد core/database
 
 class GuardDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> person;
@@ -157,7 +157,6 @@ class GuardDetailsScreen extends StatelessWidget {
             const SizedBox(height: 30),
             
             // --- الزر الجديد: التفاصيل المالية ---
-                        // --- الزر الجديد: التفاصيل المالية ---
             SizedBox(
               width: double.infinity, 
               height: 55,
@@ -179,7 +178,7 @@ class GuardDetailsScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => FinancialDetailsScreen(
-                          guardId: id, // 🚨 هذا هو السطر الذي كان مفقوداً ويسبب الخطأ! 🚨
+                          guardId: id,
                           guardName: name, 
                           basicSalary: basicSalary, 
                           totalAdvances: totalAdvances, 

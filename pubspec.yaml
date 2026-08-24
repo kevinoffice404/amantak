@@ -19,15 +19,15 @@ dependencies:
 
   excel: ^4.0.6
   share_plus: ^9.0.0
+  
+  # المكتبات الجديدة للـ PDF تم وضعها في المكان الصحيح
+  pdf: ^3.11.1
+  printing: ^5.13.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-
-    pdf: ^3.11.1
-  printing: ^5.13.1
-  
 
 flutter:
   # Required because flutter_localizations is enabled and Flutter runs the

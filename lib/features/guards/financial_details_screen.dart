@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+// 🚨 المكتبات الجديدة الخاصة بالـ PDF 🚨
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass.dart'; 
-import '../../core/utils/database_helper.dart'; // مسار الداتا بيز
+import '../../core/utils/database_helper.dart'; 
 
 class FinancialDetailsScreen extends StatefulWidget {
   final String guardId;
@@ -36,7 +41,150 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
     _currentPenalties = widget.totalPenalties;
   }
 
-  // 1. نافذة تعديل الراتب الأساسي (موجودة مسبقاً)
+  // ==== 🚨 الدالة السحرية لتوليد وطباعة الـ PDF 🚨 ====
+  Future<void> _generateAndPrintPDF() async {
+    // إظهار مؤشر تحميل أثناء تجهيز الملف
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('جاري تجهيز إيصال الراتب...', style: TextStyle(fontFamily: 'Cairo'))),
+    );
+
+    // استخدام خط Cairo ليدعم اللغة العربية في الـ PDF
+    final font = await PdfGoogleFonts.cairoRegular();
+    final boldFont = await PdfGoogleFonts.cairoBold();
+    
+    final pdf = pw.Document();
+    final double netSalary = _currentBasicSalary - _currentAdvances - _currentPenalties;
+    final String today = "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}";
+
+    // بناء صفحة الـ PDF
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        textDirection: pw.TextDirection.rtl, // تحديد اتجاه النص من اليمين لليسار
+        theme: pw.ThemeData.withFont(base: font, bold: boldFont),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // ترويسة الإيصال (Header)
+              pw.Center(
+                child: pw.Text('نظام إدارة الأمن الشامل', style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+              ),
+              pw.SizedBox(height: 5),
+              pw.Center(
+                child: pw.Text('إيصال مفردات راتب - شهر (${DateTime.now().month} / ${DateTime.now().year})', style: pw.TextStyle(fontSize: 18, color: PdfColors.grey700)),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Divider(thickness: 2, color: PdfColors.blue900),
+              pw.SizedBox(height: 30),
+
+              // بيانات الحارس
+              pw.Container(
+                padding: const pw.EdgeInsets.all(15),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.grey100,
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+                  border: pw.Border.all(color: PdfColors.grey300),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('اسم الفرد: ${widget.guardName}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                        pw.SizedBox(height: 5),
+                        pw.Text('كود الفرد: ${widget.guardId}', style: const pw.TextStyle(fontSize: 14)),
+                      ]
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('تاريخ الإصدار:', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
+                        pw.SizedBox(height: 5),
+                        pw.Text(today, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      ]
+                    ),
+                  ]
+                )
+              ),
+              pw.SizedBox(height: 30),
+
+              // جدول التفاصيل المالية
+              pw.Text('التفاصيل المالية:', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 10),
+              pw.Table.fromTextArray(
+                context: context,
+                border: pw.TableBorder.all(width: 1, color: PdfColors.grey400),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.blue50),
+                headerHeight: 40,
+                cellHeight: 35,
+                cellAlignments: {
+                  0: pw.Alignment.centerRight,
+                  1: pw.Alignment.centerLeft,
+                },
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16, color: PdfColors.blue900),
+                cellStyle: const pw.TextStyle(fontSize: 16),
+                data: <List<String>>[
+                  ['البيان', 'المبلغ (ج.م)'],
+                  ['الراتب الأساسي', _currentBasicSalary.toStringAsFixed(0)],
+                  ['السلف المسحوبة', '- ${_currentAdvances.toStringAsFixed(0)}'],
+                  ['الجزاءات والخصومات', '- ${_currentPenalties.toStringAsFixed(0)}'],
+                ],
+              ),
+              pw.SizedBox(height: 20),
+
+              // المربع النهائي (الصافي)
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.blue900,
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text('الصافي المستحق للدفع:', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                    pw.Text('${netSalary.toStringAsFixed(0)} ج.م', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                  ]
+                )
+              ),
+              pw.SizedBox(height: 60),
+
+              // التوقيعات
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                children: [
+                  pw.Column(
+                    children: [
+                      pw.Text('توقيع المشرف / الإدارة', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(height: 30),
+                      pw.Text('.......................................'),
+                    ]
+                  ),
+                  pw.Column(
+                    children: [
+                      pw.Text('توقيع الحارس بالاستلام', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(height: 30),
+                      pw.Text('.......................................'),
+                    ]
+                  ),
+                ]
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    // فتح شاشة المعاينة والطباعة
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'ايصال_راتب_${widget.guardName}_$today.pdf',
+    );
+  }
+  // ==========================================
+
   void _showEditSalaryDialog() {
     TextEditingController salaryController = TextEditingController(
       text: _currentBasicSalary.toStringAsFixed(0)
@@ -65,10 +213,7 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
               onPressed: () async {
                 if (salaryController.text.isNotEmpty) {
                   double newSalary = double.parse(salaryController.text);
-                  
-                  // تحديث الراتب في قاعدة البيانات
                   await DatabaseHelper.instance.updateGuardSalary(int.parse(widget.guardId), newSalary);
-                  
                   setState(() => _currentBasicSalary = newSalary);
                   Navigator.pop(context);
                 }
@@ -81,7 +226,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
     );
   }
 
-  // 2. 🚨 نافذة تسجيل سلفة جديدة (الجديدة) 🚨
   void _showAddAdvanceDialog() {
     TextEditingController amountController = TextEditingController();
 
@@ -108,16 +252,14 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
               onPressed: () async {
                 if (amountController.text.isNotEmpty) {
                   double amount = double.parse(amountController.text);
-                  String today = DateTime.now().toString().split(' ')[0]; // تاريخ اليوم
+                  String today = DateTime.now().toString().split(' ')[0]; 
 
-                  // إضافة السلفة في قاعدة البيانات
                   await DatabaseHelper.instance.insertAdvance({
                     'guard_name': widget.guardName,
                     'amount': amount.toString(),
                     'date': today,
                   });
                   
-                  // تحديث الواجهة لزيادة السلف وخصمها من الصافي
                   setState(() => _currentAdvances += amount);
                   Navigator.pop(context);
                   
@@ -140,6 +282,14 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
 
     return GlassPage( 
       title: 'التفاصيل المالية',
+      // 🚨 إضافة زر الطباعة (PDF) في شريط الشاشة العلوي 🚨
+      actions: [
+        IconButton(
+          tooltip: 'طباعة مفردات الراتب (PDF)',
+          icon: const Icon(Icons.picture_as_pdf_rounded, color: AppColors.primaryNavy, size: 28),
+          onPressed: _generateAndPrintPDF,
+        ),
+      ],
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -147,7 +297,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
             Text(widget.guardName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primaryNavy, fontFamily: 'Cairo'), textAlign: TextAlign.center),
             const SizedBox(height: 20),
 
-            // البطاقة الرئيسية
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(25),
@@ -167,7 +316,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
             
             const SizedBox(height: 30),
 
-            // بطاقة التفاصيل
             GlassSurface(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -176,24 +324,20 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
                   const Text('تفاصيل الحساب هذا الشهر', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryNavy, fontFamily: 'Cairo')),
                   const Divider(height: 30, thickness: 1, color: Colors.black12),
                   
-                  // الراتب الأساسي
                   _buildFinancialRow(
                     title: 'الراتب الأساسي', amount: _currentBasicSalary, icon: Icons.account_balance, iconColor: Colors.blue, amountColor: AppColors.primaryNavy, isDeduction: false,
                     actionIcon: Icons.edit, onAction: _showEditSalaryDialog,
                   ),
                   const SizedBox(height: 15),
                   
-                  // 🚨 السلف (تم إضافة زر الإضافة هنا) 🚨
                   _buildFinancialRow(
                     title: 'السلف المسحوبة', amount: _currentAdvances, icon: Icons.money_off, iconColor: Colors.orange, amountColor: Colors.orange.shade700, isDeduction: true,
-                    actionIcon: Icons.add_circle_outline, onAction: _showAddAdvanceDialog, // زر جديد بلون برتقالي
+                    actionIcon: Icons.add_circle_outline, onAction: _showAddAdvanceDialog, 
                   ),
                   const SizedBox(height: 15),
                   
-                  // الجزاءات
                   _buildFinancialRow(
                     title: 'إجمالي الجزاءات', amount: _currentPenalties, icon: Icons.gavel, iconColor: Colors.red, amountColor: Colors.red.shade700, isDeduction: true,
-                    // لم نضف زر هنا لأن الجزاءات عادة تسجل من شاشة "تسجيل جزاء إداري" التي تمتلكها بالفعل
                   ),
                 ],
               ),
@@ -204,7 +348,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
     );
   }
 
-  // تحديث دالة بناء الصفوف لتدعم الأيقونات المختلفة (Edit للراتب، و Add للسلف)
   Widget _buildFinancialRow({
     required String title, required double amount, required IconData icon, required Color iconColor, required Color amountColor, required bool isDeduction,
     IconData? actionIcon, VoidCallback? onAction,

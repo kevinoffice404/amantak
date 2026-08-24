@@ -76,6 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       var excel = Excel.createExcel();
       final db = await DatabaseHelper.instance.database;
 
+      // 1. شيت الحضور والانصراف
       Sheet attendanceSheet = excel['الحضور والانصراف'];
       excel.setDefaultSheet('الحضور والانصراف');
       attendanceSheet.appendRow(_createRow(['م', 'اسم الحارس', 'نوع الحركة', 'الوقت', 'التاريخ']));
@@ -84,6 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         attendanceSheet.appendRow(_createRow([row['id'], row['guard_name'], row['action_type'], row['action_time'], row['action_date']]));
       }
 
+      // 2. شيت الجزاءات
       Sheet penaltiesSheet = excel['الجزاءات'];
       penaltiesSheet.appendRow(_createRow(['م', 'اسم الحارس', 'القيمة/الجزاء', 'السبب', 'التاريخ']));
       var penaltiesData = await db.query('penalties');
@@ -91,6 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         penaltiesSheet.appendRow(_createRow([row['id'], row['guard_name'], row['amount'], row['reason'], row['date']]));
       }
 
+      // 3. شيت العهد
       Sheet equipmentSheet = excel['العهد'];
       equipmentSheet.appendRow(_createRow(['م', 'اسم الجهاز', 'الحالة']));
       var equipmentData = await db.query('equipment');
@@ -98,11 +101,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
         equipmentSheet.appendRow(_createRow([row['id'], row['item_name'], row['status']]));
       }
 
+      // 4. شيت أفراد الأمن
       Sheet guardsSheet = excel['أفراد الأمن'];
       guardsSheet.appendRow(_createRow(['م', 'الاسم', 'الهاتف', 'الرتبة', 'حالة البطاقة']));
       var guardsData = await db.query('guards');
       for (var row in guardsData) {
         guardsSheet.appendRow(_createRow([row['id'], row['name'], row['phone'], row['role'], row['id_status']]));
+      }
+
+      // 5. 🚨 [الجديد] شيت الرواتب والماليات 🚨
+      Sheet salariesSheet = excel['الرواتب والماليات'];
+      salariesSheet.appendRow(_createRow(['م', 'الاسم', 'الراتب الأساسي', 'إجمالي السلف', 'إجمالي الجزاءات', 'الصافي المستحق']));
+      
+      for (var row in guardsData) { // نستخدم بيانات الحراس التي جلبناها بالأعلى
+        String name = row['name'].toString();
+        String id = row['id'].toString();
+        
+        // جلب الراتب الأساسي
+        double basicSalary = row['basic_salary'] != null 
+            ? double.tryParse(row['basic_salary'].toString()) ?? 9000.0 
+            : 9000.0;
+            
+        // جلب السلف والجزاءات
+        final totals = await DatabaseHelper.instance.getGuardFinancialTotals(name);
+        double totalAdvances = totals['total_advances'] ?? 0.0;
+        double totalPenalties = totals['total_penalties'] ?? 0.0;
+        
+        // حساب الصافي
+        double netSalary = basicSalary - totalAdvances - totalPenalties;
+
+        // إضافة صف الحارس في شيت الإكسيل
+        salariesSheet.appendRow(_createRow([
+          id,
+          name,
+          basicSalary,
+          totalAdvances,
+          totalPenalties,
+          netSalary,
+        ]));
       }
 
       if (excel.tables.keys.contains('Sheet1')) {
@@ -340,7 +376,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // استخدام GlassPage كخلفية لصفحة الإعدادات
     return GlassPage(
       title: 'الإعدادات',
       child: ListView(
@@ -400,7 +435,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // تحويل القائمة إلى كروت زجاجية أنيقة
   Widget _buildListTile({required IconData icon, required String title, required String subtitle, Color? color, required VoidCallback onTap, bool isLoading = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),

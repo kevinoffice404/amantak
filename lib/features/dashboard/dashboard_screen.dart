@@ -29,15 +29,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int totalGuards = 0;
   int todayAttendance = 0;
   int totalEquipment = 0;
+  
+  // 🚨 متغير لتخزين التنبيهات الذكية
+  List<Map<String, String>> _alerts = [];
 
   @override
   void initState() {
     super.initState();
     _loadAdminName();
-    _loadStatistics(); // جلب الأعداد الحقيقية
+    _loadStatistics(); // جلب الأعداد الحقيقية والتنبيهات
   }
 
-  // جلب الأعداد من قاعدة البيانات
+  // جلب الأعداد والتنبيهات من قاعدة البيانات
   Future<void> _loadStatistics() async {
     try {
       final db = await DatabaseHelper.instance.database;
@@ -55,12 +58,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           0;
 
       final equipmentCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM equipment')) ?? 0;
+      
+      // 🚨 جلب التنبيهات الذكية
+      final alerts = await DatabaseHelper.instance.getSmartAlerts();
 
       if (mounted) {
         setState(() {
           totalGuards = guardsCount;
           todayAttendance = attendanceCount;
           totalEquipment = equipmentCount;
+          _alerts = alerts; // تحديث التنبيهات
         });
       }
     } catch (e) {
@@ -94,13 +101,92 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
   }
 
+  // 🚨 نافذة عرض التنبيهات الذكية الزجاجية
+  void _showAlertsDialog(BuildContext context) {
+    showGlassDialog(
+      context: context,
+      builder: (context) {
+        return GlassDialog(
+          title: const Text('التنبيهات الذكية'),
+          titleIcon: const Icon(Icons.notifications_active_rounded, color: Colors.orange),
+          content: _alerts.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text('لا توجد تنبيهات حالياً. كل شيء على ما يرام!', 
+                      style: TextStyle(fontFamily: 'Cairo', color: Colors.green, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center),
+                )
+              : SizedBox(
+                  width: double.maxFinite,
+                  height: 300, 
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _alerts.length,
+                    separatorBuilder: (context, index) => const Divider(color: Colors.black12),
+                    itemBuilder: (context, index) {
+                      final alert = _alerts[index];
+                      final isDanger = alert['type'] == 'danger';
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isDanger ? Colors.red.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isDanger ? Icons.warning_rounded : Icons.info_outline_rounded,
+                            color: isDanger ? Colors.red : Colors.orange,
+                          ),
+                        ),
+                        title: Text(alert['title']!, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: isDanger ? Colors.red : Colors.orange.shade700)),
+                        subtitle: Text(alert['message']!, style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.black87)),
+                      );
+                    },
+                  ),
+                ),
+          actions: [
+            GlassActionButton(
+              label: 'إغلاق',
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // تم استبدال Scaffold بـ GlassPage للحصول على الخلفية الملونة الجميلة
     return GlassPage(
       title: 'لوحة التحكم',
-      showBack: false, // إخفاء سهم الرجوع لأن هذه هي الشاشة الرئيسية
+      showBack: false, 
       actions: [
+        // 🚨 أيقونة التنبيهات (الجرس)
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            IconButton(
+              tooltip: 'التنبيهات',
+              icon: const Icon(Icons.notifications_active_outlined, color: AppColors.primaryNavy),
+              onPressed: () => _showAlertsDialog(context),
+            ),
+            if (_alerts.isNotEmpty)
+              Positioned(
+                top: 10,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                  child: Text(
+                    '${_alerts.length}',
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        // أيقونة الإعدادات القديمة
         IconButton(
           tooltip: 'الإعدادات',
           icon: const Icon(Icons.settings_outlined, color: AppColors.primaryNavy),
@@ -177,7 +263,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _buildServiceCard('إدارة العهد', Icons.inventory_2_outlined, AppColors.accentGold, () => _refreshOnReturn(context, const EquipmentScreen())),
                   _buildServiceCard('أفراد الأمن', Icons.groups_rounded, const Color(0xFF6B8FF2), () => _refreshOnReturn(context, const GuardsScreen())),
                   _buildServiceCard('الجزاءات', Icons.gavel_rounded, const Color(0xFF9A79E8), () => _refreshOnReturn(context, const PenaltiesScreen())),
-                  // تم إزالة زر الإعدادات من هنا لوجوده في الـ AppBar بالأعلى للحفاظ على التناسق
                 ],
               ),
             ],
@@ -204,13 +289,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildServiceCard(String title, IconData icon, Color color, VoidCallback onTap) {
     return GlassSurface(
-      padding: EdgeInsets.zero, // التعديل السحري: جعلنا الـ Padding صفر هنا
+      padding: EdgeInsets.zero, 
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
         child: Padding(
-          padding: const EdgeInsets.all(10), // وضعنا الـ Padding داخل InkWell ليتمدد تأثير اللمس
+          padding: const EdgeInsets.all(10), 
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -233,8 +318,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// ودجت مستقلة لعرض الوقت والتاريخ — تتحدث لوحدها كل ثانية
-// من غير ما تعمل rebuild لباقي شاشة الداشبورد
 class _ClockWidget extends StatefulWidget {
   const _ClockWidget();
 

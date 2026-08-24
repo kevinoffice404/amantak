@@ -18,7 +18,6 @@ dependencies:
   path: ^1.9.1
 
   excel: ^4.0.6
-  # 🚨 تم ترقية مكتبة المشاركة لأحدث إصدار لإنهاء الخلاف!
   share_plus: ^13.3.0
   pdf: ^3.13.0
   printing: ^5.15.0
@@ -28,17 +27,11 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+# 🚨 هذا هو السطر السحري الذي سيجبر كل المكتبات على التصالح والتوقف عن الشجار 🚨
+dependency_overrides:
+  xml: ^7.0.1
+  web: ^1.0.0
+
 flutter:
   generate: true
   uses-material-design: true
-
-  # لإضافة خط Cairo لاحقاً:
-  # assets:
-  #   - assets/fonts/
-  # fonts:
-  #   - family: Cairo
-  #     fonts:
-  #       - asset: assets/fonts/Cairo-Regular.ttf
-  #       - asset: assets/fonts/Cairo-Bold.ttf
-  #         weight: 700
-  

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/database_helper.dart';
 
+// 🚀 استدعاء ملف نموذج البيانات الذي قمت أنت بإنشائه
+import 'equipment_item.dart'; 
+
 // استدعاء ملفات الزجاج
 import '../../core/widgets/glass.dart' hide GlassActionButton;
 import '../../core/widgets/glass_dialog.dart'; 
@@ -14,8 +17,9 @@ class EquipmentScreen extends StatefulWidget {
 }
 
 class _EquipmentScreenState extends State<EquipmentScreen> {
-  List<Map<String, dynamic>> equipmentList = [];
-  List<Map<String, dynamic>> guardsList = []; // قائمة الحراس لاستخدامها في التسليم
+  // 🚀 التعديل الأهم: القائمة الآن أصبحت من نوع EquipmentItem بدلاً من Map
+  List<EquipmentItem> equipmentList = [];
+  List<Map<String, dynamic>> guardsList = []; // قائمة الحراس ستبقى كما هي حالياً
   bool isLoading = true;
 
   @override
@@ -24,7 +28,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     _initData();
   }
 
-  // 🚀 دالة تهيئة البيانات وإنشاء جدول السجلات إن لم يكن موجوداً
   Future<void> _initData() async {
     if (mounted) setState(() => isLoading = true);
     
@@ -42,12 +45,13 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       ''');
 
       // جلب الأجهزة والحراس معاً
-      final data = await DatabaseHelper.instance.getAllEquipment();
+      final rawEquipmentData = await DatabaseHelper.instance.getAllEquipment();
       final guards = await DatabaseHelper.instance.getAllGuards();
       
       if (!mounted) return;
       setState(() {
-        equipmentList = data;
+        // 🚀 التعديل: تحويل البيانات الخام (Map) إلى كائنات EquipmentItem الذكية
+        equipmentList = rawEquipmentData.map((data) => EquipmentItem.fromMap(data)).toList();
         guardsList = guards;
         isLoading = false;
       });
@@ -68,7 +72,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     final db = await DatabaseHelper.instance.database;
     final now = DateTime.now();
     
-    // تنسيق الوقت بشكل مفهوم (مثال: 2026-08-25 02:30 م)
     int h = now.hour;
     String ampm = h >= 12 ? 'م' : 'ص';
     if (h == 0) h = 12;
@@ -137,7 +140,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
 
                             if (!mounted) return;
                             Navigator.pop(dialogContext); 
-                            await _initData(); // تحديث القائمة
+                            await _initData(); 
                           } catch (_) {
                             if (!mounted) return;
                             setDialogState(() => isDialogSaving = false);
@@ -152,11 +155,11 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           }
         );
       },
-    ).then((_) => nameController.dispose()); // 🚀 تنظيف الذاكرة بعد الإغلاق
+    ).then((_) => nameController.dispose());
   }
 
-  // نافذة اختيار الحارس لتسليمه العهدة
-  void _showAssignGuardDialog(Map<String, dynamic> item) {
+  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem بدلاً من Map
+  void _showAssignGuardDialog(EquipmentItem item) {
     String? selectedGuard;
     bool isSaving = false;
 
@@ -172,7 +175,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('الجهاز: ${item['item_name']}', style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16)),
+                  // 🚀 لاحظ كيف نستخدم item.name بكل سهولة وأمان
+                  Text('الجهاز: ${item.name}', style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 15),
                   const Text('اختر فرد الأمن المستلم:', style: TextStyle(fontFamily: 'Cairo', color: AppColors.textDark)),
                   const SizedBox(height: 8),
@@ -212,15 +216,14 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                       setDialogState(() => isSaving = true);
                       try {
                         final db = await DatabaseHelper.instance.database;
-                        // تحديث حالة الجهاز وتحديد من استلمه
                         await db.update(
                           'equipment', 
                           {'status': 'مستلم', 'assigned_to': selectedGuard}, 
                           where: 'id = ?', 
-                          whereArgs: [item['id']]
+                          whereArgs: [item.id] // 🚀 استخدام item.id
                         );
-                        // تسجيل الحركة في السجل
-                        await _logAction(item['id'], selectedGuard!, 'استلم العهدة');
+                        
+                        await _logAction(item.id, selectedGuard!, 'استلم العهدة'); // 🚀 استخدام item.id
                         
                         if (!mounted) return;
                         Navigator.pop(dialogContext);
@@ -242,23 +245,21 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // استلام العهدة وإعادتها للمركز
-  Future<void> _returnEquipment(Map<String, dynamic> item) async {
+  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem
+  Future<void> _returnEquipment(EquipmentItem item) async {
     try {
       final db = await DatabaseHelper.instance.database;
-      // معرفة من كان معه العهدة لتسجيل أنه أعادها
-      String previousGuard = item['assigned_to'] != 'المركز' ? item['assigned_to'] : 'شخص غير معروف';
+      // 🚀 استخدام item.assignedTo
+      String previousGuard = item.assignedTo != 'المركز' ? item.assignedTo : 'شخص غير معروف';
       
-      // تحديث الحالة
       await db.update(
         'equipment', 
         {'status': 'متاح', 'assigned_to': 'المركز'}, 
         where: 'id = ?', 
-        whereArgs: [item['id']]
+        whereArgs: [item.id]
       );
       
-      // تسجيل الإعادة
-      await _logAction(item['id'], previousGuard, 'أعاد العهدة للمركز');
+      await _logAction(item.id, previousGuard, 'أعاد العهدة للمركز');
       
       _initData();
       if (mounted) {
@@ -267,24 +268,24 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     } catch (_) {}
   }
 
-  // إرسال للصيانة
-  Future<void> _sendToMaintenance(Map<String, dynamic> item) async {
+  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem
+  Future<void> _sendToMaintenance(EquipmentItem item) async {
     try {
       final db = await DatabaseHelper.instance.database;
-      await db.update('equipment', {'status': 'صيانة', 'assigned_to': 'ورشة الصيانة'}, where: 'id = ?', whereArgs: [item['id']]);
-      await _logAction(item['id'], 'المركز', 'إرسال الجهاز للصيانة');
+      await db.update('equipment', {'status': 'صيانة', 'assigned_to': 'ورشة الصيانة'}, where: 'id = ?', whereArgs: [item.id]);
+      await _logAction(item.id, 'المركز', 'إرسال الجهاز للصيانة');
       _initData();
     } catch (_) {}
   }
 
-  // 🚀 نافذة عرض سجل الحركات (History) الاحترافية
-  void _showEquipmentHistory(Map<String, dynamic> item) async {
+  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem
+  void _showEquipmentHistory(EquipmentItem item) async {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> history = await db.query(
       'equipment_history',
       where: 'equipment_id = ?',
-      whereArgs: [item['id']],
-      orderBy: 'id DESC', // ترتيب من الأحدث للأقدم
+      whereArgs: [item.id], // 🚀 استخدام item.id
+      orderBy: 'id DESC', 
     );
 
     if (!mounted) return;
@@ -299,19 +300,19 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           children: [
             Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.4), borderRadius: BorderRadius.circular(10)))),
             const SizedBox(height: 16),
-            Text('سجل حركات: ${item['item_name']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Cairo', color: AppColors.primaryNavy), textAlign: TextAlign.center),
+            // 🚀 استخدام item.name
+            Text('سجل حركات: ${item.name}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Cairo', color: AppColors.primaryNavy), textAlign: TextAlign.center),
             const SizedBox(height: 16),
             const Divider(height: 1, color: Colors.black12),
             const SizedBox(height: 10),
             
-            // قائمة السجلات
             history.isEmpty 
               ? const Padding(
                   padding: EdgeInsets.all(30.0),
                   child: Text('لا توجد حركات مسجلة لهذا الجهاز حتى الآن.', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Cairo', color: Colors.grey)),
                 )
               : SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.4, // تحديد ارتفاع للقائمة
+                  height: MediaQuery.of(context).size.height * 0.4, 
                   child: ListView.builder(
                     itemCount: history.length,
                     itemBuilder: (context, index) {
@@ -353,8 +354,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // خيارات الجهاز 
-  void _showOptions(Map<String, dynamic> item) {
+  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem
+  void _showOptions(EquipmentItem item) {
     showGlassBottomSheet(
       context: context,
       builder: (context) => Padding(
@@ -364,23 +365,23 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           children: [
             Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.4), borderRadius: BorderRadius.circular(10))),
             const SizedBox(height: 16),
-            Text(item['item_name'], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Cairo', color: AppColors.primaryNavy)),
+            Text(item.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Cairo', color: AppColors.primaryNavy)),
             const SizedBox(height: 16),
             const Divider(height: 1, color: Colors.black12),
             const SizedBox(height: 10),
             
-            // 🚀 زر السجل الجديد
             ListTile(
               leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primaryBlue.withOpacity(0.15), shape: BoxShape.circle), child: const Icon(Icons.history_rounded, color: AppColors.primaryBlue)),
               title: const Text('سجل حركات الجهاز', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: AppColors.primaryBlue)),
               onTap: () {
                 Navigator.pop(context);
-                _showEquipmentHistory(item); // فتح نافذة السجل
+                _showEquipmentHistory(item); 
               },
             ),
             const Divider(height: 20, color: Colors.black12),
 
-            if (item['status'] != 'متاح')
+            // 🚀 استخدام item.status للتحقق بشكل آمن
+            if (item.status != 'متاح')
               ListTile(
                 leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.green.withOpacity(0.15), shape: BoxShape.circle), child: const Icon(Icons.check_circle_outline, color: Colors.green)),
                 title: const Text('إرجاع العهدة للمركز (متاح)', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
@@ -390,17 +391,17 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                 },
               ),
 
-            if (item['status'] == 'متاح')
+            if (item.status == 'متاح')
               ListTile(
                 leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.accentGold.withOpacity(0.15), shape: BoxShape.circle), child: const Icon(Icons.assignment_ind_outlined, color: AppColors.accentGold)),
                 title: const Text('تسليم عهدة لفرد أمن (مستلم)', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                 onTap: () {
                   Navigator.pop(context);
-                  _showAssignGuardDialog(item); // فتح نافذة اختيار الحارس
+                  _showAssignGuardDialog(item); 
                 },
               ),
 
-            if (item['status'] != 'صيانة')
+            if (item.status != 'صيانة')
               ListTile(
                 leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.red.withOpacity(0.15), shape: BoxShape.circle), child: const Icon(Icons.build_circle_outlined, color: Colors.red)),
                 title: const Text('إرسال للصيانة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: Colors.red)),
@@ -451,9 +452,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  Widget _buildEquipmentCard(Map<String, dynamic> item) {
-    String statusText = item['status'];
-    String assignedTo = item['assigned_to'] ?? 'المركز';
+  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem وتقرأ البيانات بأمان وسهولة
+  Widget _buildEquipmentCard(EquipmentItem item) {
+    String statusText = item.status;
+    String assignedTo = item.assignedTo;
     Color statusColor;
     
     if (statusText == 'متاح') {
@@ -480,7 +482,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             ),
             child: Icon(Icons.radio_rounded, color: statusColor),
           ),
-          title: Text(item['item_name'], style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Cairo', color: AppColors.primaryNavy, fontSize: 16)),
+          title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Cairo', color: AppColors.primaryNavy, fontSize: 16)),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 6.0),
             child: Column(
@@ -497,7 +499,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                // 🚀 عرض اسم الشخص المستلم للعهدة على الكارت مباشرة
                 Text('بعهدة: $assignedTo', style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600, fontFamily: 'Cairo', fontSize: 12)),
               ],
             ),

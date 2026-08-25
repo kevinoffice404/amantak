@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/database_helper.dart';
 
-// 🚀 استدعاء ملف نموذج البيانات الذي قمت أنت بإنشائه
-import 'equipment_item.dart'; 
+// 🚀 التعديل الذي سيحل المشكلة: إضافة مجلد models للمسار الصحيح
+import 'models/equipment_item.dart'; 
 
 // استدعاء ملفات الزجاج
 import '../../core/widgets/glass.dart' hide GlassActionButton;
@@ -17,9 +17,9 @@ class EquipmentScreen extends StatefulWidget {
 }
 
 class _EquipmentScreenState extends State<EquipmentScreen> {
-  // 🚀 التعديل الأهم: القائمة الآن أصبحت من نوع EquipmentItem بدلاً من Map
+  // القائمة تعتمد على النموذج الذكي الذي صنعته
   List<EquipmentItem> equipmentList = [];
-  List<Map<String, dynamic>> guardsList = []; // قائمة الحراس ستبقى كما هي حالياً
+  List<Map<String, dynamic>> guardsList = []; 
   bool isLoading = true;
 
   @override
@@ -50,7 +50,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       
       if (!mounted) return;
       setState(() {
-        // 🚀 التعديل: تحويل البيانات الخام (Map) إلى كائنات EquipmentItem الذكية
+        // تحويل البيانات الخام (Map) إلى كائنات EquipmentItem الذكية
         equipmentList = rawEquipmentData.map((data) => EquipmentItem.fromMap(data)).toList();
         guardsList = guards;
         isLoading = false;
@@ -158,7 +158,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     ).then((_) => nameController.dispose());
   }
 
-  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem بدلاً من Map
+  // نافذة اختيار الحارس لتسليمه العهدة
   void _showAssignGuardDialog(EquipmentItem item) {
     String? selectedGuard;
     bool isSaving = false;
@@ -175,7 +175,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 🚀 لاحظ كيف نستخدم item.name بكل سهولة وأمان
                   Text('الجهاز: ${item.name}', style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 15),
                   const Text('اختر فرد الأمن المستلم:', style: TextStyle(fontFamily: 'Cairo', color: AppColors.textDark)),
@@ -220,10 +219,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                           'equipment', 
                           {'status': 'مستلم', 'assigned_to': selectedGuard}, 
                           where: 'id = ?', 
-                          whereArgs: [item.id] // 🚀 استخدام item.id
+                          whereArgs: [item.id]
                         );
                         
-                        await _logAction(item.id, selectedGuard!, 'استلم العهدة'); // 🚀 استخدام item.id
+                        await _logAction(item.id, selectedGuard!, 'استلم العهدة'); 
                         
                         if (!mounted) return;
                         Navigator.pop(dialogContext);
@@ -245,11 +244,10 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem
+  // استلام العهدة وإعادتها للمركز
   Future<void> _returnEquipment(EquipmentItem item) async {
     try {
       final db = await DatabaseHelper.instance.database;
-      // 🚀 استخدام item.assignedTo
       String previousGuard = item.assignedTo != 'المركز' ? item.assignedTo : 'شخص غير معروف';
       
       await db.update(
@@ -268,7 +266,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     } catch (_) {}
   }
 
-  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem
+  // إرسال للصيانة
   Future<void> _sendToMaintenance(EquipmentItem item) async {
     try {
       final db = await DatabaseHelper.instance.database;
@@ -278,13 +276,13 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     } catch (_) {}
   }
 
-  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem
+  // عرض سجل حركات الجهاز
   void _showEquipmentHistory(EquipmentItem item) async {
     final db = await DatabaseHelper.instance.database;
     final List<Map<String, dynamic>> history = await db.query(
       'equipment_history',
       where: 'equipment_id = ?',
-      whereArgs: [item.id], // 🚀 استخدام item.id
+      whereArgs: [item.id], 
       orderBy: 'id DESC', 
     );
 
@@ -300,7 +298,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
           children: [
             Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.4), borderRadius: BorderRadius.circular(10)))),
             const SizedBox(height: 16),
-            // 🚀 استخدام item.name
             Text('سجل حركات: ${item.name}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Cairo', color: AppColors.primaryNavy), textAlign: TextAlign.center),
             const SizedBox(height: 16),
             const Divider(height: 1, color: Colors.black12),
@@ -354,7 +351,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem
+  // خيارات الجهاز 
   void _showOptions(EquipmentItem item) {
     showGlassBottomSheet(
       context: context,
@@ -380,7 +377,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
             ),
             const Divider(height: 20, color: Colors.black12),
 
-            // 🚀 استخدام item.status للتحقق بشكل آمن
             if (item.status != 'متاح')
               ListTile(
                 leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.green.withOpacity(0.15), shape: BoxShape.circle), child: const Icon(Icons.check_circle_outline, color: Colors.green)),
@@ -452,7 +448,6 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     );
   }
 
-  // 🚀 التعديل: الدالة الآن تستقبل EquipmentItem وتقرأ البيانات بأمان وسهولة
   Widget _buildEquipmentCard(EquipmentItem item) {
     String statusText = item.status;
     String assignedTo = item.assignedTo;

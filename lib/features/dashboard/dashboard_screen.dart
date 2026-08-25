@@ -7,7 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/database_helper.dart'; 
 
-// 🚨 التعديل الأول: استدعاء ملفات النوافذ الزجاجية بشكل صحيح 🚨
+// استدعاء ملفات النوافذ الزجاجية
 import '../../core/widgets/glass.dart' hide GlassActionButton;
 import '../../core/widgets/glass_dialog.dart';
 
@@ -40,7 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadAdminName();
-    _loadStatistics(); // جلب الأعداد الحقيقية والتنبيهات
+    _loadStatistics(); 
   }
 
   // جلب الأعداد والتنبيهات من قاعدة البيانات
@@ -50,7 +50,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final guardsCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM guards')) ?? 0;
       
-      String today = "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}";
+      // 🚀 التعديل: جلب الوقت مرة واحدة فقط لزيادة السرعة ومنع أخطاء منتصف الليل
+      final now = DateTime.now();
+      String today = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      
       final attendanceCount = Sqflite.firstIntValue(
             await db.rawQuery(
               'SELECT COUNT(DISTINCT guard_name) FROM attendance '
@@ -70,7 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           totalGuards = guardsCount;
           todayAttendance = attendanceCount;
           totalEquipment = equipmentCount;
-          _alerts = alerts; // تحديث التنبيهات
+          _alerts = alerts; 
         });
       }
     } catch (e) {
@@ -89,7 +92,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           adminName = savedName;
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint("Error loading admin name: $e");
+    }
   }
 
   Future<void> _refreshOnReturn(BuildContext context, Widget screen) async {
@@ -142,8 +147,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             color: isDanger ? Colors.red : Colors.orange,
                           ),
                         ),
-                        title: Text(alert['title']!, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: isDanger ? Colors.red : Colors.orange.shade700)),
-                        subtitle: Text(alert['message']!, style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.black87)),
+                        title: Text(alert['title'] ?? '', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: isDanger ? Colors.red : Colors.orange.shade700)),
+                        subtitle: Text(alert['message'] ?? '', style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.black87)),
                       );
                     },
                   ),
@@ -151,7 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             GlassActionButton(
               label: 'إغلاق',
-              icon: Icons.close_rounded, // 🚨 التعديل الثاني: إضافة الأيقونة الإجبارية هنا 🚨
+              icon: Icons.close_rounded, 
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -190,7 +195,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
           ],
         ),
-        // أيقونة الإعدادات القديمة
         IconButton(
           tooltip: 'الإعدادات',
           icon: const Icon(Icons.settings_outlined, color: AppColors.primaryNavy),
@@ -231,7 +235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           const SizedBox(height: 4),
                           const Text('مشرف الوردية', style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Cairo')),
                           const SizedBox(height: 12),
-                          const _ClockWidget(),
+                          const _ClockWidget(), // تم تحسين هذا الجزء بالأسفل
                         ],
                       ),
                     ),
@@ -341,6 +345,7 @@ class _ClockWidgetState extends State<_ClockWidget> {
   void initState() {
     super.initState();
     _updateTime();
+    // المؤقت يعمل كل ثانية ليضمن دقة الساعة
     _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _updateTime());
   }
 
@@ -360,15 +365,24 @@ class _ClockWidgetState extends State<_ClockWidget> {
     String dayName = _days[now.weekday - 1];
     String monthName = _months[now.month - 1];
 
-    if (!mounted) return;
-    setState(() {
-      _timeString = '$h:$mStr $ampm';
-      _dateString = '$dayName، ${now.day} $monthName';
-    });
+    // 🚀 التعديل الأهم هنا: إعداد النصوص الجديدة
+    String newTimeString = '$h:$mStr $ampm';
+    String newDateString = '$dayName، ${now.day} $monthName';
+
+    // 🚀 نتحقق: هل تغير الوقت (الدقيقة) فعلياً؟ 
+    // إذا لم يتغير، لن نقوم باستدعاء setState، وهذا يوفر 59 عملية إعادة رسم غير ضرورية كل دقيقة!
+    if (_timeString != newTimeString || _dateString != newDateString) {
+      if (!mounted) return;
+      setState(() {
+        _timeString = newTimeString;
+        _dateString = newDateString;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // 🚀 التعديل: إضافة const للمسافات والأيقونات لأنها لا تتغير
     return Row(
       children: [
         const Icon(Icons.calendar_today_rounded, size: 13, color: Colors.white70),

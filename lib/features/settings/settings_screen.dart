@@ -25,7 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAdminName(); // تحميل اسم المشرف عند فتح الشاشة
+    _loadAdminName(); 
   }
 
   Future<void> _loadAdminName() async {
@@ -40,7 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
       }
     } catch (e) {
-      // الاعتماد على الاسم الافتراضي في حال عدم وجود ملف
+      debugPrint("Error loading admin name: $e");
     }
   }
 
@@ -109,28 +109,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         guardsSheet.appendRow(_createRow([row['id'], row['name'], row['phone'], row['role'], row['id_status']]));
       }
 
-      // 5. 🚨 [الجديد] شيت الرواتب والماليات 🚨
+      // 5. شيت الرواتب والماليات
       Sheet salariesSheet = excel['الرواتب والماليات'];
       salariesSheet.appendRow(_createRow(['م', 'الاسم', 'الراتب الأساسي', 'إجمالي السلف', 'إجمالي الجزاءات', 'الصافي المستحق']));
       
-      for (var row in guardsData) { // نستخدم بيانات الحراس التي جلبناها بالأعلى
+      for (var row in guardsData) { 
         String name = row['name'].toString();
         String id = row['id'].toString();
         
-        // جلب الراتب الأساسي
         double basicSalary = row['basic_salary'] != null 
             ? double.tryParse(row['basic_salary'].toString()) ?? 9000.0 
             : 9000.0;
             
-        // جلب السلف والجزاءات
         final totals = await DatabaseHelper.instance.getGuardFinancialTotals(name);
-        double totalAdvances = totals['total_advances'] ?? 0.0;
-        double totalPenalties = totals['total_penalties'] ?? 0.0;
+        double totalAdvances = (totals['total_advances'] as num?)?.toDouble() ?? 0.0;
+        double totalPenalties = (totals['total_penalties'] as num?)?.toDouble() ?? 0.0;
         
-        // حساب الصافي
         double netSalary = basicSalary - totalAdvances - totalPenalties;
 
-        // إضافة صف الحارس في شيت الإكسيل
         salariesSheet.appendRow(_createRow([
           id,
           name,
@@ -151,7 +147,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       final directory = await getTemporaryDirectory();
-      String today = "${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}";
+      
+      // 🚀 التعديل: جلب الوقت مرة واحدة فقط
+      final now = DateTime.now();
+      String today = "${now.year}-${now.month}-${now.day}";
       final filePath = '${directory.path}/تقرير_الأمن_$today.xlsx';
 
       final file = File(filePath);
@@ -163,13 +162,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
     } catch (e) {
+      // 🚀 التعديل: تجميع التحقق من mounted لضمان عدم حدوث Crash
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('حدث خطأ أثناء التصدير!', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('حدث خطأ أثناء التصدير!', style: TextStyle(fontFamily: 'Cairo')), 
+            backgroundColor: Colors.red
+          )
+        );
       }
-    }
-
-    if (mounted) {
-      setState(() => isExporting = false);
+    } finally {
+      if (mounted) {
+        setState(() => isExporting = false);
+      }
     }
   }
 

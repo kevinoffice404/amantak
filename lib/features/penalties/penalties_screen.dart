@@ -13,8 +13,11 @@ class PenaltiesScreen extends StatefulWidget {
 }
 
 class _PenaltiesScreenState extends State<PenaltiesScreen> {
+  // متغيرات حفظ اختيارات المستخدم
   String? selectedGuard;
   String? selectedPenaltyType;
+  
+  // متحكمات النصوص (Controllers)
   final TextEditingController amountController = TextEditingController(); 
   final TextEditingController reasonController = TextEditingController();
 
@@ -22,7 +25,8 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
   bool isLoading = true;
   bool _isSaving = false;
   
-  final List<String> penaltyTypes = ['غياب', 'تأخير', 'مخالفة تعليمات', 'إنذار'];
+  // القائمة الثابتة لأنواع الجزاءات
+  final List<String> penaltyTypes = const ['غياب', 'تأخير', 'مخالفة تعليمات', 'إنذار'];
 
   @override
   void initState() {
@@ -30,6 +34,15 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
     _loadGuards(); 
   }
 
+  // 🚀 خطوة مهمة جداً للأداء: إغلاق المتحكمات عند الخروج من الشاشة لتحرير الذاكرة
+  @override
+  void dispose() {
+    amountController.dispose();
+    reasonController.dispose();
+    super.dispose();
+  }
+
+  // جلب أسماء الحراس من قاعدة البيانات
   Future<void> _loadGuards() async {
     try {
       final data = await DatabaseHelper.instance.getAllGuards();
@@ -50,9 +63,11 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
     }
   }
 
+  // دالة حفظ الجزاء في قاعدة البيانات
   Future<void> _submitPenalty() async {
     if (_isSaving) return;
 
+    // التحقق من إدخال جميع البيانات المهمة
     if (selectedGuard == null || selectedPenaltyType == null || reasonController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -65,6 +80,7 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
       return;
     }
 
+    // معالجة قيمة الخصم إذا تركها المستخدم فارغة
     String amountValue = amountController.text.trim();
     if (amountValue.isEmpty) {
       amountValue = selectedPenaltyType == 'إنذار' ? 'إنذار إداري' : 'بدون خصم';
@@ -72,11 +88,14 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
 
     String fullReason = '[$selectedPenaltyType] ${reasonController.text.trim()}';
 
-    DateTime now = DateTime.now();
+    // جلب التاريخ الحالي بشكل آمن وسريع
+    final now = DateTime.now();
     String todayDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     setState(() => _isSaving = true);
+    
     try {
+      // إرسال البيانات لقاعدة البيانات
       await DatabaseHelper.instance.insertPenalty({
         'guard_name': selectedGuard,
         'amount': amountValue,
@@ -96,9 +115,8 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
       return;
     }
 
+    // إذا نجح الحفظ
     if (mounted) {
-      setState(() => _isSaving = false);
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('تم تسجيل "$selectedPenaltyType" للفرد "$selectedGuard" بنجاح', style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: Colors.white)),
@@ -108,187 +126,149 @@ class _PenaltiesScreenState extends State<PenaltiesScreen> {
         ),
       );
 
+      // 🚀 إكمال الكود الناقص: تفريغ الحقول بعد الحفظ بنجاح
       setState(() {
         selectedGuard = null;
         selectedPenaltyType = null;
-        amountController.clear();
-        reasonController.clear();
+        _isSaving = false;
       });
+      amountController.clear();
+      reasonController.clear();
     }
   }
 
-  @override
-  void dispose() {
-    amountController.dispose();
-    reasonController.dispose();
-    super.dispose();
-  }
-
+  // 🚀 بناء واجهة المستخدم باستخدام العناصر الزجاجية
   @override
   Widget build(BuildContext context) {
-    // تم التبديل لـ GlassPage
     return GlassPage(
-      title: 'الجزاءات والغياب',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(right: 8, bottom: 16),
-              child: Text(
-                'تسجيل إجراء إداري جديد',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryNavy, fontFamily: 'Cairo'),
-              ),
-            ),
-            
-            // بطاقة نموذج الإدخال الزجاجية
-            GlassSurface(
-              padding: const EdgeInsets.all(24),
-              borderRadius: BorderRadius.circular(24),
+      title: 'تسجيل الجزاءات',
+      child: isLoading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.accentGold))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              physics: const BouncingScrollPhysics(),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. اختيار اسم الفرد
-                  const Text('اسم فرد الأمن', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryNavy, fontFamily: 'Cairo')),
-                  const SizedBox(height: 10),
-                  isLoading 
-                  ? const Center(child: CircularProgressIndicator())
-                  : guardsList.isEmpty
-                      ? const Text('لا يوجد حراس مسجلين حالياً. أضف حراساً أولاً.', style: TextStyle(color: Colors.red, fontFamily: 'Cairo'))
-                      : DropdownButtonFormField<String>(
-                          value: selectedGuard,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.5), // تأثير زجاجي للحقل
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          ),
-                          dropdownColor: AppColors.glassWhite.withOpacity(0.95), // قائمة منسدلة زجاجية
-                          borderRadius: BorderRadius.circular(20),
-                          hint: const Text('اضغط لاختيار الاسم', style: TextStyle(fontFamily: 'Cairo')),
-                          items: guardsList.map((guardMap) {
-                            String guardName = guardMap['name'];
-                            return DropdownMenuItem(
-                              value: guardName, 
-                              child: Text(guardName, style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, color: AppColors.primaryNavy))
-                            );
-                          }).toList(),
-                          onChanged: (value) => setState(() => selectedGuard = value),
-                        ),
-                  const SizedBox(height: 24),
-
-                  // 2. اختيار نوع الإجراء (Choice Chips)
-                  const Text('نوع الإجراء', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryNavy, fontFamily: 'Cairo')),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 12,
-                    children: penaltyTypes.map((type) {
-                      bool isSelected = selectedPenaltyType == type;
-                      return ChoiceChip(
-                        label: Text(type, style: const TextStyle(fontFamily: 'Cairo')),
-                        selected: isSelected,
-                        selectedColor: AppColors.accentGold,
-                        backgroundColor: Colors.white.withOpacity(0.5),
-                        showCheckmark: false,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : AppColors.primaryNavy,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(color: isSelected ? AppColors.accentGold : Colors.white.withOpacity(0.8), width: 1.5)
-                        ),
-                        onSelected: (selected) {
-                          setState(() => selectedPenaltyType = selected ? type : null);
-                        },
-                      );
-                    }).toList(),
+                  // اختيار الحارس
+                  _buildLabel('اسم فرد الأمن'),
+                  _buildGlassDropdown(
+                    hint: 'اختر فرد الأمن',
+                    value: selectedGuard,
+                    items: guardsList.map((g) => g['name'].toString()).toList(),
+                    onChanged: (val) => setState(() => selectedGuard = val as String?),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // 3. قيمة أو مدة الخصم
-                  const Text('قيمة أو مدة الخصم (اختياري)', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryNavy, fontFamily: 'Cairo')),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: amountController,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.5),
-                      hintText: 'مثال: 150 جنيه أو خصم يوم...',
-                      hintStyle: const TextStyle(fontFamily: 'Cairo', color: Colors.grey),
-                      prefixIcon: const Icon(Icons.money_off_rounded, color: Colors.redAccent),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                  // اختيار نوع الجزاء
+                  _buildLabel('نوع الجزاء'),
+                  _buildGlassDropdown(
+                    hint: 'اختر النوع (غياب، تأخير...)',
+                    value: selectedPenaltyType,
+                    items: penaltyTypes,
+                    onChanged: (val) => setState(() => selectedPenaltyType = val as String?),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // قيمة الخصم (اختياري)
+                  _buildLabel('قيمة الخصم (إن وجد)'),
+                  GlassSurface(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    borderRadius: BorderRadius.circular(16),
+                    child: TextField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(fontFamily: 'Cairo', color: AppColors.primaryNavy),
+                      decoration: const InputDecoration(
+                        hintText: 'مثال: 50 (أو اتركه فارغاً)',
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                        border: InputBorder.none,
+                        icon: Icon(Icons.money_off_rounded, color: AppColors.primaryNavy),
                       ),
-                      contentPadding: const EdgeInsets.all(16),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // 4. سبب الإجراء
-                  const Text('السبب / الملاحظات', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryNavy, fontFamily: 'Cairo')),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: reasonController,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.5),
-                      hintText: 'اكتب تفاصيل المخالفة هنا...',
-                      hintStyle: const TextStyle(fontFamily: 'Cairo', color: Colors.grey),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                  // سبب الجزاء (إجباري)
+                  _buildLabel('سبب وتفاصيل الجزاء'),
+                  GlassSurface(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    borderRadius: BorderRadius.circular(16),
+                    child: TextField(
+                      controller: reasonController,
+                      maxLines: 3,
+                      style: const TextStyle(fontFamily: 'Cairo', color: AppColors.primaryNavy),
+                      decoration: const InputDecoration(
+                        hintText: 'اكتب تفاصيل المخالفة هنا...',
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
+                        border: InputBorder.none,
                       ),
-                      contentPadding: const EdgeInsets.all(16),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 35),
 
-                  // 5. زر الحفظ الاحترافي
-                  Container(
-                    width: double.infinity,
-                    height: 55,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: guardsList.isEmpty || _isSaving 
-                          ? [Colors.grey.shade400, Colors.grey.shade500]
-                          : [const Color(0xFF274C77), const Color(0xFF163A63)],
-                      ),
+                  // زر الحفظ
+                  GlassSurface(
+                    padding: EdgeInsets.zero,
+                    borderRadius: BorderRadius.circular(16),
+                    color: AppColors.primaryBlue.withOpacity(0.8), // لون مميز للزر
+                    child: InkWell(
+                      onTap: _submitPenalty,
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: guardsList.isEmpty || _isSaving ? [] : const [
-                        BoxShadow(color: Color(0x33163A63), blurRadius: 16, offset: Offset(0, 7))
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: _isSaving
+                            ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.gavel_rounded, color: Colors.white),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'تسجيل الجزاء',
+                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                ],
+                              ),
                       ),
-                      onPressed: guardsList.isEmpty || _isSaving ? null : _submitPenalty, 
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                            )
-                          : const Text(
-                              'حفظ الإجراء',
-                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Cairo'),
-                            ),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
+    );
+  }
+
+  // دالة مساعدة لرسم العناوين (لتنظيف الكود)
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, right: 4),
+      child: Text(
+        text,
+        style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textDark),
+      ),
+    );
+  }
+
+  // دالة مساعدة لرسم القوائم المنسدلة بتصميم زجاجي
+  Widget _buildGlassDropdown({required String hint, required String? value, required List<String> items, required Function(dynamic) onChanged}) {
+    return GlassSurface(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      borderRadius: BorderRadius.circular(16),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          hint: Text(hint, style: const TextStyle(fontFamily: 'Cairo', color: Colors.grey, fontSize: 13)),
+          isExpanded: true,
+          dropdownColor: Colors.white.withOpacity(0.9), // خلفية بيضاء شفافة للقائمة عند فتحها
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primaryNavy),
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(item, style: const TextStyle(fontFamily: 'Cairo', color: AppColors.primaryNavy, fontWeight: FontWeight.w600)),
+            );
+          }).toList(),
+          onChanged: onChanged,
         ),
       ),
     );

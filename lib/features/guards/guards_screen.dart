@@ -55,7 +55,9 @@ class _GuardsScreenState extends State<GuardsScreen> {
   }
 
   bool _isExpired(DateTime date) {
-    return DateUtils.dateOnly(date).isBefore(DateUtils.dateOnly(DateTime.now()));
+    // 🚀 التعديل: جلب الوقت الحالي مرة واحدة لتحسين الأداء
+    final now = DateTime.now();
+    return DateUtils.dateOnly(date).isBefore(DateUtils.dateOnly(now));
   }
 
   Future<String> _saveImageLocally(File image, String prefix) async {
@@ -64,7 +66,9 @@ class _GuardsScreenState extends State<GuardsScreen> {
     await imageDirectory.create(recursive: true);
 
     final extension = p.extension(image.path).isEmpty ? '.jpg' : p.extension(image.path).toLowerCase();
-    final fileName = '${prefix}_${DateTime.now().microsecondsSinceEpoch}$extension';
+    // 🚀 التعديل: استخدام الوقت الحالي لمرة واحدة لتجنب أي تأخير
+    final now = DateTime.now();
+    final fileName = '${prefix}_${now.microsecondsSinceEpoch}$extension';
 
     final savedImage = await image.copy(p.join(imageDirectory.path, fileName));
     return savedImage.path;
@@ -240,12 +244,12 @@ class _GuardsScreenState extends State<GuardsScreen> {
 
                   InkWell(
                     onTap: () async {
-                      // استخدام الـ DatePicker الزجاجي!
+                      final now = DateTime.now();
                       DateTime? picked = await showGlassDatePicker(
                         context: context,
-                        initialDate: selectedExpiryDate ?? DateUtils.dateOnly(DateTime.now()),
-                        firstDate: DateUtils.dateOnly(DateTime.now()),
-                        lastDate: DateTime(DateTime.now().year + 20),
+                        initialDate: selectedExpiryDate ?? DateUtils.dateOnly(now),
+                        firstDate: DateUtils.dateOnly(now),
+                        lastDate: DateTime(now.year + 20),
                       );
                       if (picked != null) {
                         setDialogState(() {
@@ -369,7 +373,11 @@ class _GuardsScreenState extends State<GuardsScreen> {
           },
         );
       },
-    );
+    ).then((_) {
+      // 🚀 التعديل الأهم: تنظيف الذاكرة بعد إغلاق النافذة
+      nameController.dispose();
+      phoneController.dispose();
+    });
   }
 
   // ==== نافذة الإضافة الزجاجية ====
@@ -472,6 +480,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
+                        child: Ink ভবিষ্যৎ (False),
                         child: InkWell(
                           onTap: () => _pickImage(false),
                           child: Container(
@@ -489,11 +498,12 @@ class _GuardsScreenState extends State<GuardsScreen> {
 
                   InkWell(
                     onTap: () async {
+                      final now = DateTime.now();
                       DateTime? picked = await showGlassDatePicker(
                         context: context,
-                        initialDate: DateUtils.dateOnly(DateTime.now()),
-                        firstDate: DateUtils.dateOnly(DateTime.now()),
-                        lastDate: DateTime(DateTime.now().year + 20),
+                        initialDate: DateUtils.dateOnly(now),
+                        firstDate: DateUtils.dateOnly(now),
+                        lastDate: DateTime(now.year + 20),
                       );
                       if (picked != null) {
                         setDialogState(() {
@@ -601,7 +611,11 @@ class _GuardsScreenState extends State<GuardsScreen> {
           },
         );
       },
-    );
+    ).then((_) {
+      // 🚀 التعديل الأهم: تنظيف الذاكرة بعد إغلاق النافذة
+      nameController.dispose();
+      phoneController.dispose();
+    });
   }
 
   // ==== القائمة السفلية الزجاجية ====
@@ -654,7 +668,6 @@ class _GuardsScreenState extends State<GuardsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // تم التبديل إلى GlassPage
     return GlassPage(
       title: 'إدارة أفراد الأمن',
       child: Stack(
@@ -664,14 +677,13 @@ class _GuardsScreenState extends State<GuardsScreen> {
               : guardsList.isEmpty
                   ? const Center(child: Text('لا يوجد أفراد أمن مسجلين حالياً.\nاضغط على "إضافة حارس" للبدء.', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: AppColors.textMuted, fontFamily: 'Cairo', fontWeight: FontWeight.w600)))
                   : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 90), // مسافة لتجنب زر الإضافة
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
                       itemCount: guardsList.length,
                       itemBuilder: (context, index) {
                         return _buildPersonCard(guardsList[index]);
                       },
                     ),
           
-          // زر الإضافة العائم متوافق مع اللغة العربية
           PositionedDirectional(
             bottom: 24,
             end: 24,
@@ -688,7 +700,6 @@ class _GuardsScreenState extends State<GuardsScreen> {
     );
   }
 
-  // كارت الحارس أصبح زجاجياً
   Widget _buildPersonCard(Map<String, dynamic> person) {
     String name = person['name'];
     String role = person['role'];

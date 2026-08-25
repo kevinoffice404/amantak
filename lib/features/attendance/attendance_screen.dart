@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/database_helper.dart'; 
-// استدعاء مكونات الزجاج (تأكد من مسار الملف الصحيح لديك)
+// استدعاء مكونات الزجاج
 import '../../core/widgets/glass.dart';
 
 class AttendanceScreen extends StatefulWidget {
@@ -21,9 +21,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   bool isLoading = true;
   bool _isSubmitting = false;
 
-  late Timer _timer;
-  DateTime _currentTime = DateTime.now();
-  
   late AnimationController _animationController;
   late Animation<double> _pulseAnimation;
 
@@ -32,13 +29,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     super.initState();
     _loadGuards(); 
     
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-      setState(() {
-        _currentTime = DateTime.now();
-      });
-    });
-
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -99,7 +89,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
   @override
   void dispose() {
-    _timer.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -136,9 +125,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
       return; 
     }
 
+    final now = DateTime.now(); // جلب الوقت عند ضغط الزر
     final actionType = isClockedIn ? 'انصراف' : 'دخول';
-    final actionTime = _formatTime(_currentTime);
-    final actionDate = _formatDate(_currentTime);
+    final actionTime = _formatTime(now);
+    final actionDate = _formatDate(now);
 
     setState(() => _isSubmitting = true);
     try {
@@ -187,7 +177,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     Color buttonColor = isClockedIn ? AppColors.accentGold : Colors.green;
 
-    // تم استبدال Scaffold العادي بـ GlassPage
     return GlassPage(
       title: 'تسجيل الحضور والانصراف',
       child: Padding(
@@ -195,7 +184,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // --- القائمة المنسدلة لاختيار الحارس (باستخدام GlassSurface) ---
+            // القائمة المنسدلة لاختيار الحارس
             GlassSurface(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: isLoading 
@@ -214,7 +203,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                   hint: const Text('-- اختر اسم الفرد --', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                   value: selectedGuard,
                   icon: const Icon(Icons.arrow_drop_down, color: AppColors.primaryNavy),
-                  dropdownColor: AppColors.glassWhite.withOpacity(0.9), // جعل قائمة المنسدلة شبه شفافة
+                  dropdownColor: AppColors.glassWhite.withOpacity(0.9), 
                   borderRadius: BorderRadius.circular(20),
                   items: guardsList.map((guardMap) {
                     String guardName = guardMap['name'];
@@ -234,29 +223,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
             ),
             const SizedBox(height: 24),
             
-            // بطاقة الوقت الحالي (باستخدام GlassSurface)
-            GlassSurface(
-              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
-              child: Column(
-                children: [
-                  const Text('الوقت الحالي', style: TextStyle(color: AppColors.textMuted, fontSize: 14, fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text(
-                    _formatTime(_currentTime),
-                    style: const TextStyle(
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryNavy,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ],
-              ),
+            // 🚀 تم استبدال الكود القديم بـ ClockWidget الذكي المنفصل
+            const GlassSurface(
+              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 40),
+              child: _ClockWidget(), 
             ),
             
             const Spacer(),
 
-            // زر البصمة المتحرك (بقي كما هو لأنه يحتاج تصميماً خاصاً للنبض)
+            // زر البصمة المتحرك
             AnimatedBuilder(
               animation: _pulseAnimation,
               builder: (context, child) {
@@ -293,7 +268,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    border: Border.all(color: Colors.white.withOpacity(0.5), width: 2), // حافة زجاجية خفيفة للزر
+                    border: Border.all(color: Colors.white.withOpacity(0.5), width: 2), 
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -332,7 +307,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
             const Spacer(),
 
-            // بطاقة حالة آخر عملية (باستخدام GlassSurface مع تغيير لون الزجاج)
+            // بطاقة حالة آخر عملية
             GlassSurface(
               padding: const EdgeInsets.all(20),
               color: (isClockedIn ? Colors.orange : Colors.green).withOpacity(0.15),
@@ -363,6 +338,72 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
           ],
         ),
       ),
+    );
+  }
+}
+
+// 🚀 هذا هو الكود الجديد الذكي الذي يحمي المعالج من الاستنزاف!
+// قمنا بإنشاء Widget منفصل للساعة يقوم بتحديث نفسه فقط، ولا يُحدث كامل الشاشة.
+class _ClockWidget extends StatefulWidget {
+  const _ClockWidget();
+
+  @override
+  State<_ClockWidget> createState() => _ClockWidgetState();
+}
+
+class _ClockWidgetState extends State<_ClockWidget> {
+  Timer? _timer;
+  String _timeString = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTime();
+    // المؤقت يعمل كل ثانية
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _updateTime());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _updateTime() {
+    final now = DateTime.now();
+    int h = now.hour;
+    String ampm = h >= 12 ? 'م' : 'ص';
+    if (h == 0) h = 12;
+    if (h > 12) h -= 12;
+    String mStr = now.minute.toString().padLeft(2, '0');
+    
+    String newTimeString = '$h:$mStr $ampm';
+
+    // 🚀 التحقق الذكي: لن يتم تحديث الواجهة إلا إذا تغيرت الدقيقة فعلياً!
+    if (_timeString != newTimeString) {
+      if (!mounted) return;
+      setState(() {
+        _timeString = newTimeString;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Text('الوقت الحالي', style: TextStyle(color: AppColors.textMuted, fontSize: 14, fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Text(
+          _timeString,
+          style: const TextStyle(
+            fontSize: 42,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primaryNavy,
+            letterSpacing: 1.5,
+          ),
+        ),
+      ],
     );
   }
 }

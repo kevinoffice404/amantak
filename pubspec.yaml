@@ -35,3 +35,7 @@ dependency_overrides:
 flutter:
   generate: true
   uses-material-design: true
+
+  # 🚨 التعديل الجديد: تعريف مسار الخطوط لكي يقرأها ملف الـ PDF 🚨
+  assets:
+    - assets/fonts/

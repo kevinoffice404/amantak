@@ -55,7 +55,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
   }
 
   bool _isExpired(DateTime date) {
-    // 🚀 التعديل: جلب الوقت الحالي مرة واحدة لتحسين الأداء
+    // جلب الوقت الحالي مرة واحدة لتحسين الأداء
     final now = DateTime.now();
     return DateUtils.dateOnly(date).isBefore(DateUtils.dateOnly(now));
   }
@@ -66,7 +66,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     await imageDirectory.create(recursive: true);
 
     final extension = p.extension(image.path).isEmpty ? '.jpg' : p.extension(image.path).toLowerCase();
-    // 🚀 التعديل: استخدام الوقت الحالي لمرة واحدة لتجنب أي تأخير
+    // استخدام الوقت الحالي لمرة واحدة لتجنب أي تأخير
     final now = DateTime.now();
     final fileName = '${prefix}_${now.microsecondsSinceEpoch}$extension';
 
@@ -374,7 +374,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
         );
       },
     ).then((_) {
-      // 🚀 التعديل الأهم: تنظيف الذاكرة بعد إغلاق النافذة
+      // تنظيف الذاكرة بعد إغلاق النافذة
       nameController.dispose();
       phoneController.dispose();
     });
@@ -464,6 +464,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
                   const Text('صور البطاقة الشخصية (إلزامي)', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Cairo', color: AppColors.primaryNavy)),
                   const SizedBox(height: 10),
 
+                  // تم إصلاح الخطأ في هذا الجزء 🚀
                   Row(
                     children: [
                       Expanded(
@@ -480,7 +481,6 @@ class _GuardsScreenState extends State<GuardsScreen> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Ink ভবিষ্যৎ (False),
                         child: InkWell(
                           onTap: () => _pickImage(false),
                           child: Container(
@@ -612,7 +612,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
         );
       },
     ).then((_) {
-      // 🚀 التعديل الأهم: تنظيف الذاكرة بعد إغلاق النافذة
+      // تنظيف الذاكرة بعد إغلاق النافذة
       nameController.dispose();
       phoneController.dispose();
     });

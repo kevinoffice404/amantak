@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-// 🚨 المكتبات الخاصة بالـ PDF 🚨
+import 'package:flutter/services.dart'; // 🚨 تم إضافة هذه المكتبة لقراءة الملفات المحلية (Assets) 🚨
+
+// المكتبات الخاصة بالـ PDF
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -33,7 +35,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
   late double _currentAdvances;
   late double _currentPenalties;
 
-  // 🚨 متغيرات جديدة لحساب الساعات 🚨
   double _totalWorkedHours = 0.0;
   bool _isLoadingHours = true;
 
@@ -44,16 +45,13 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
     _currentAdvances = widget.totalAdvances;
     _currentPenalties = widget.totalPenalties;
     
-    // تشغيل دالة حساب الساعات عند فتح الشاشة
     _calculateWorkedHours();
   }
 
-  // ==== 🚨 دالة حساب الساعات من شاشة الحضور والانصراف 🚨 ====
   Future<void> _calculateWorkedHours() async {
     try {
       final db = await DatabaseHelper.instance.database;
       final now = DateTime.now();
-      // جلب حركات الشهر الحالي فقط (مثال: 2026-08%)
       String currentMonth = "${now.year}-${now.month.toString().padLeft(2, '0')}-%";
       
       final records = await db.query(
@@ -66,7 +64,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
       double totalHours = 0.0;
       double? clockInTimeDouble;
 
-      // دالة داخلية لتحويل النص (11:30 ص) إلى رقم عشري (11.5) لسهولة الحساب
       double parseTimeString(String timeStr) {
         try {
           final parts = timeStr.split(' ');
@@ -84,7 +81,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
         }
       }
 
-      // مطابقة الدخول والانصراف
       for (var record in records) {
         String actionType = record['action_type'].toString();
         String actionTime = record['action_time'].toString();
@@ -98,7 +94,7 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
           if (hoursWorked > 0) {
             totalHours += hoursWorked;
           }
-          clockInTimeDouble = null; // إعادة تعيين لليوم التالي
+          clockInTimeDouble = null; 
         }
       }
 
@@ -115,18 +111,21 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
     }
   }
 
-  // ==== 🚨 الدالة السحرية لتوليد وطباعة الـ PDF (محدثة بنظام الساعات) 🚨 ====
+  // ==== 🚨 تم تحديث هذه الدالة لتقرأ الخطوط المحلية 🚨 ====
   Future<void> _generateAndPrintPDF() async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('جاري تجهيز إيصال الراتب...', style: TextStyle(fontFamily: 'Cairo'))),
     );
 
-    final font = await PdfGoogleFonts.cairoRegular();
-    final boldFont = await PdfGoogleFonts.cairoBold();
+    // 1. تحميل ملفات الخطوط من مجلد assets
+    final ByteData regularFontData = await rootBundle.load('assets/fonts/Cairo-Regular.ttf');
+    final pw.Font font = pw.Font.ttf(regularFontData);
+
+    final ByteData boldFontData = await rootBundle.load('assets/fonts/Cairo-Bold.ttf');
+    final pw.Font boldFont = pw.Font.ttf(boldFontData);
     
     final pdf = pw.Document();
     
-    // 🚨 الحسابات المالية الدقيقة 🚨
     final double dailyRate = _currentBasicSalary / 30.0;
     final double hourlyRate = dailyRate / 12.0;
     final double earnedSalary = _totalWorkedHours * hourlyRate;
@@ -137,7 +136,8 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        textDirection: pw.TextDirection.rtl, 
+        textDirection: pw.TextDirection.rtl, // 🚨 التأكد من اتجاه النص من اليمين لليسار 🚨
+        // 2. تطبيق الخطوط المحلية على كامل صفحة الـ PDF
         theme: pw.ThemeData.withFont(base: font, bold: boldFont),
         build: (pw.Context context) {
           return pw.Column(
@@ -150,7 +150,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
               pw.Divider(thickness: 2, color: PdfColors.blue900),
               pw.SizedBox(height: 20),
 
-              // بيانات الحارس
               pw.Container(
                 padding: const pw.EdgeInsets.all(15),
                 decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)), border: pw.Border.all(color: PdfColors.grey300)),
@@ -178,7 +177,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
               ),
               pw.SizedBox(height: 20),
 
-              // جدول التفاصيل المالية المحدث
               pw.Text('التفاصيل المالية والدوام:', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 10),
               pw.Table.fromTextArray(
@@ -202,7 +200,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
               ),
               pw.SizedBox(height: 20),
 
-              // المربع النهائي (الصافي)
               pw.Container(
                 padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 decoration: const pw.BoxDecoration(color: PdfColors.blue900, borderRadius: pw.BorderRadius.all(pw.Radius.circular(10))),
@@ -216,7 +213,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
               ),
               pw.SizedBox(height: 50),
 
-              // التوقيعات
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                 children: [
@@ -309,11 +305,10 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🚨 الحسابات الديناميكية 🚨
     final double dailyRate = _currentBasicSalary / 30.0;
     final double hourlyRate = dailyRate / 12.0;
-    final double earnedSalary = _totalWorkedHours * hourlyRate; // الراتب المستحق الفعلي
-    final double netSalary = earnedSalary - _currentAdvances - _currentPenalties; // الصافي
+    final double earnedSalary = _totalWorkedHours * hourlyRate; 
+    final double netSalary = earnedSalary - _currentAdvances - _currentPenalties; 
 
     return GlassPage( 
       title: 'التفاصيل المالية',
@@ -321,7 +316,7 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
         IconButton(
           tooltip: 'طباعة مفردات الراتب (PDF)',
           icon: const Icon(Icons.picture_as_pdf_rounded, color: AppColors.primaryNavy, size: 28),
-          onPressed: _isLoadingHours ? null : _generateAndPrintPDF, // تعطيل الزر أثناء الحساب
+          onPressed: _isLoadingHours ? null : _generateAndPrintPDF, 
         ),
       ],
       child: _isLoadingHours 
@@ -333,7 +328,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
             Text(widget.guardName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primaryNavy, fontFamily: 'Cairo'), textAlign: TextAlign.center),
             const SizedBox(height: 20),
 
-            // كارت الصافي
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(25),
@@ -367,7 +361,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 🚨 عرض ساعات العمل والراتب المكتسب 🚨
                   _buildFinancialRow(
                     title: 'ساعات العمل الفعلية', amount: _totalWorkedHours, icon: Icons.access_time_filled_rounded, iconColor: Colors.green, amountColor: Colors.green.shade700, isDeduction: false, suffix: ' ساعة'
                   ),
@@ -396,7 +389,6 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
     );
   }
 
-  // 🚨 تم إضافة خيار (suffix) لإضافة كلمة "ساعة" أو غيرها بجوار الرقم 🚨
   Widget _buildFinancialRow({
     required String title, required double amount, required IconData icon, required Color iconColor, required Color amountColor, required bool isDeduction,
     IconData? actionIcon, VoidCallback? onAction, String suffix = ' ج.م',

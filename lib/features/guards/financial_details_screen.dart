@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 🚨 تم إضافة هذه المكتبة لقراءة الملفات المحلية (Assets) 🚨
+import 'package:flutter/services.dart'; 
 
-// المكتبات الخاصة بالـ PDF
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -111,13 +110,11 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
     }
   }
 
-  // ==== 🚨 تم تحديث هذه الدالة لتقرأ الخطوط المحلية 🚨 ====
   Future<void> _generateAndPrintPDF() async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('جاري تجهيز إيصال الراتب...', style: TextStyle(fontFamily: 'Cairo'))),
     );
 
-    // 1. تحميل ملفات الخطوط من مجلد assets
     final ByteData regularFontData = await rootBundle.load('assets/fonts/Cairo-Regular.ttf');
     final pw.Font font = pw.Font.ttf(regularFontData);
 
@@ -136,14 +133,14 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        textDirection: pw.TextDirection.rtl, // 🚨 التأكد من اتجاه النص من اليمين لليسار 🚨
-        // 2. تطبيق الخطوط المحلية على كامل صفحة الـ PDF
+        textDirection: pw.TextDirection.rtl, 
         theme: pw.ThemeData.withFont(base: font, bold: boldFont),
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Center(child: pw.Text('نظام إدارة الأمن الشامل - مصنع الرحمة', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900))),
+              // 🚨 تم التعديل هنا: اسم الشركة الجديد 🚨
+              pw.Center(child: pw.Text('شركة أبو رواش جروب للأمن والحراسة', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900))),
               pw.SizedBox(height: 5),
               pw.Center(child: pw.Text('إيصال مفردات راتب - شهر (${DateTime.now().month} / ${DateTime.now().year})', style: pw.TextStyle(fontSize: 18, color: PdfColors.grey700))),
               pw.SizedBox(height: 10),
@@ -206,7 +203,8 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text('الصافي المستحق للدفع:', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                    // 🚨 تم التعديل هنا: اسم الصافي الجديد 🚨
+                    pw.Text('صافي مستحقاتك:', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
                     pw.Text('${netSalary.toStringAsFixed(0)} ج.م', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
                   ]
                 )
@@ -338,7 +336,8 @@ class _FinancialDetailsScreenState extends State<FinancialDetailsScreen> {
               ),
               child: Column(
                 children: [
-                  const Text('الصافي المستحق (بناءً على الساعات)', style: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Cairo')),
+                  // 🚨 تم التعديل هنا أيضاً في واجهة التطبيق لتتوافق مع الـ PDF 🚨
+                  const Text('صافي مستحقاتك', style: TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Cairo')),
                   const SizedBox(height: 10),
                   Text('${netSalary.toStringAsFixed(0)} ج.م', style: const TextStyle(color: Colors.white, fontSize: 38, fontWeight: FontWeight.bold, fontFamily: 'Cairo')),
                 ],

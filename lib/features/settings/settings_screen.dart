@@ -11,6 +11,9 @@ import '../../core/utils/database_helper.dart';
 import '../../core/widgets/glass.dart' hide GlassActionButton;
 import '../../core/widgets/glass_dialog.dart';
 
+// 🚨 استدعاء شاشة التحديثات الجديدة 🚨
+import 'updates_screen.dart';
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
 
@@ -148,7 +151,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       final directory = await getTemporaryDirectory();
       
-      // 🚀 التعديل: جلب الوقت مرة واحدة فقط
       final now = DateTime.now();
       String today = "${now.year}-${now.month}-${now.day}";
       final filePath = '${directory.path}/تقرير_الأمن_$today.xlsx';
@@ -162,7 +164,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
     } catch (e) {
-      // 🚀 التعديل: تجميع التحقق من mounted لضمان عدم حدوث Crash
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -413,6 +414,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           _buildSectionTitle('حول النظام'),
+          // 🚨 الزر الجديد الخاص بشاشة التحديثات 🚨
+          _buildListTile(
+            icon: Icons.system_update_rounded,
+            title: 'التحديثات',
+            subtitle: 'التحقق من الإصدارات وسجل التحسينات',
+            color: Colors.teal,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const UpdatesScreen()),
+              );
+            },
+          ),
           _buildListTile(
             icon: Icons.info_outline_rounded,
             title: 'إصدار التطبيق',

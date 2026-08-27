@@ -21,6 +21,7 @@ class GuardsScreen extends StatefulWidget {
 }
 
 class _GuardsScreenState extends State<GuardsScreen> {
+  // متغيرات الشاشة الأساسية
   List<Map<String, dynamic>> guardsList = [];
   bool isLoading = true;
   
@@ -33,6 +34,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     _refreshGuards();
   }
 
+  // دالة لجلب البيانات من قاعدة البيانات المحلية وعرضها
   Future<void> _refreshGuards() async {
     if (mounted) setState(() => isLoading = true);
 
@@ -55,11 +57,13 @@ class _GuardsScreenState extends State<GuardsScreen> {
     }
   }
 
+  // دالة للتحقق مما إذا كان تاريخ البطاقة منتهياً
   bool _isExpired(DateTime date) {
     final now = DateTime.now();
     return DateUtils.dateOnly(date).isBefore(DateUtils.dateOnly(now));
   }
 
+  // دالة لحفظ الصور محلياً في مجلد التطبيق
   Future<String> _saveImageLocally(File image, String prefix) async {
     final directory = await getApplicationDocumentsDirectory();
     final imageDirectory = Directory(p.join(directory.path, 'guard_images'));
@@ -73,6 +77,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     return savedImage.path;
   }
 
+  // دالة لحذف الصورة القديمة عند استبدالها بصورة جديدة
   Future<void> _deleteImageIfReplaced(String? oldPath, String? newPath) async {
     if (oldPath == null || oldPath.isEmpty || oldPath == newPath) return;
     try {
@@ -101,7 +106,17 @@ class _GuardsScreenState extends State<GuardsScreen> {
               icon: Icons.delete_outline,
               danger: true,
               onPressed: () async {
+                // 1. الحذف من قاعدة البيانات المحلية (الهاتف)
                 await DatabaseHelper.instance.deleteGuard(id);
+                
+                // 2. الحذف من السحابة (Firebase) بالتزامن
+                try {
+                  await _firestoreService.deleteGuard(guardId: id.toString())
+                      .timeout(const Duration(seconds: 5));
+                } catch (e) {
+                  debugPrint('تعذر الحذف من السحابة حالياً');
+                }
+
                 if (mounted) {
                   Navigator.pop(dialogContext);
                   _refreshGuards();
@@ -327,6 +342,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
                       String finalStatus = _isExpired(selectedExpiryDate!) ? 'منتهية' : 'سارية';
 
                       try {
+                        // 1. التعديل في الهاتف محلياً
                         await DatabaseHelper.instance.updateGuard({
                           'id': person['id'],
                           'name': inputName,
@@ -337,6 +353,14 @@ class _GuardsScreenState extends State<GuardsScreen> {
                           'id_expiry_date': expiryStr,
                           'id_status': finalStatus,
                         });
+                        
+                        // 2. التعديل في السحابة فوراً
+                        await _firestoreService.updateGuard(
+                          guardId: person['id'].toString(),
+                          name: inputName,
+                          phone: phoneController.text.trim(),
+                        ).timeout(const Duration(seconds: 5));
+
                       } catch (_) {
                         if (frontImage != null && finalFrontPath != null) {
                           try {
@@ -352,7 +376,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
                         }
                         if (mounted) {
                           setDialogState(() => isDialogSaving = false);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر حفظ تعديلات الحارس.', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.red));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر حفظ التعديلات. يرجى المحاولة لاحقاً.', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.red));
                         }
                         return;
                       }
@@ -388,7 +412,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     File? frontImage;
     File? backImage;
     bool isDialogSaving = false;
-    bool isDialogClosed = false; // متغير لتفادي الانهيار عند الإلغاء
+    bool isDialogClosed = false; 
 
     showGlassDialog(
       context: context,
@@ -432,7 +456,6 @@ class _GuardsScreenState extends State<GuardsScreen> {
                     )
                   ),
                   const SizedBox(height: 12),
-                  // هنا كان القطع في الكود الخاص بك! قمت بإصلاحه وإكماله:
                   TextField(
                     controller: phoneController, 
                     keyboardType: TextInputType.phone, 
@@ -578,6 +601,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
                         String expiryStr = "${selectedExpiryDate!.year}-${selectedExpiryDate!.month.toString().padLeft(2, '0')}-${selectedExpiryDate!.day.toString().padLeft(2, '0')}";
                         String finalStatus = _isExpired(selectedExpiryDate!) ? 'منتهية' : 'سارية';
 
+                        // 1. الإضافة محلياً
                         int newGuardId = await DatabaseHelper.instance.insertGuard({
                           'name': inputName,
                           'phone': inputPhone,
@@ -588,13 +612,14 @@ class _GuardsScreenState extends State<GuardsScreen> {
                           'id_status': finalStatus,
                         });
                         
+                        // 2. الإضافة في السحابة
                         await _firestoreService.addGuard(
                           guardId: newGuardId.toString(),
                           name: inputName,
                           phone: inputPhone.isNotEmpty ? inputPhone : "غير متوفر",
                           baseSalary: 0.0,
                         ).timeout(const Duration(seconds: 5), onTimeout: () {
-                           debugPrint('انتهى وقت الاتصال بالسحابة (سيتم الحفظ محلياً)');
+                           debugPrint('انتهى وقت الاتصال بالسحابة (سيتم الحفظ محلياً فقط)');
                         });
 
                       } catch (e) {
@@ -608,7 +633,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
                         }
                         if (mounted) {
                           setDialogState(() => isDialogSaving = false);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر حفظ بيانات الحارس. تحقق من الاتصال.', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.red));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر حفظ بيانات الحارس.', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.red));
                         }
                         return;
                       }
@@ -632,7 +657,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     });
   }
 
-  // ==== القائمة السفلية ====
+  // ==== القائمة السفلية للخيارات ====
   void _showGuardOptions(Map<String, dynamic> person) {
     showGlassBottomSheet(
       context: context,
@@ -680,7 +705,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     );
   }
 
-  // ==== دالة بناء الشاشة (تم إعادتها بعد القطع) ====
+  // ==== دالة بناء الشاشة الأساسية ====
   @override
   Widget build(BuildContext context) {
     return GlassPage(
@@ -715,7 +740,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     );
   }
 
-  // ==== دالة بناء بطاقة الحارس (تم إعادتها بعد القطع) ====
+  // ==== دالة بناء بطاقة الحارس ====
   Widget _buildPersonCard(Map<String, dynamic> person) {
     String name = person['name'];
     String role = person['role'];

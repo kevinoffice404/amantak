@@ -5,52 +5,69 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 class FirestoreService {
-  // Singleton:
-  // حتى لو تم استدعاء FirestoreService() من أكثر من شاشة
-  // سنستخدم نفس Service object.
+  // Singleton
   FirestoreService._internal();
 
   static final FirestoreService _instance =
       FirestoreService._internal();
 
-  factory FirestoreService() => _instance;
-
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-
-  static const String _guardsCollection = 'guards';
-  static const String _guardsImagesFolder = 'guards_images';
-
-  CollectionReference<Map<String, dynamic>> get _guards =>
-      _db.collection(_guardsCollection);
-
-  // ============================================================
-  // Helpers
-  // ============================================================
-
-  String _cleanGuardId(String guardId) {
-    final value = guardId.trim();
-
-    if (value.isEmpty) {
-      throw ArgumentError('guardId cannot be empty');
-    }
-
-    return value;
+  factory FirestoreService() {
+    return _instance;
   }
 
-  String _imageContentType(String path) {
-    final lowerPath = path.toLowerCase();
+  final FirebaseFirestore _db =
+      FirebaseFirestore.instance;
 
-    if (lowerPath.endsWith('.png')) {
+  final FirebaseStorage _storage =
+      FirebaseStorage.instance;
+
+  static const String _guardsCollection =
+      'guards';
+
+  static const String _guardsImagesFolder =
+      'guards_images';
+
+  CollectionReference<Map<String, dynamic>>
+      get _guards {
+    return _db.collection(
+      _guardsCollection,
+    );
+  }
+
+  // =========================================================
+  // Helpers
+  // =========================================================
+
+  String _cleanGuardId(
+    String guardId,
+  ) {
+    final id = guardId.trim();
+
+    if (id.isEmpty) {
+      throw ArgumentError(
+        'guardId cannot be empty',
+      );
+    }
+
+    return id;
+  }
+
+  String _imageContentType(
+    String path,
+  ) {
+    final lower =
+        path.toLowerCase();
+
+    if (lower.endsWith('.png')) {
       return 'image/png';
     }
 
-    if (lowerPath.endsWith('.webp')) {
+    if (lower.endsWith('.webp')) {
       return 'image/webp';
     }
 
-    if (lowerPath.endsWith('.heic') ||
-        lowerPath.endsWith('.heif')) {
+    if (lower.endsWith('.heic') ||
+        lower.endsWith('.heif')) {
       return 'image/heic';
     }
 
@@ -68,40 +85,51 @@ class FirestoreService {
         0.0;
   }
 
-  String? _normalizeDate(dynamic value) {
+  String? _normalizeDate(
+    dynamic value,
+  ) {
     if (value == null) {
       return null;
     }
 
     if (value is Timestamp) {
-      return value.toDate().toIso8601String();
+      return value
+          .toDate()
+          .toIso8601String();
     }
 
     if (value is DateTime) {
       return value.toIso8601String();
     }
 
-    final text = value.toString().trim();
+    final text =
+        value.toString().trim();
 
-    return text.isEmpty ? null : text;
+    if (text.isEmpty) {
+      return null;
+    }
+
+    return text;
   }
 
-  // ============================================================
-  // 1. رفع صورة واحدة
-  // ============================================================
+  // =========================================================
+  // رفع صورة واحدة
+  // =========================================================
 
   Future<String?> uploadGuardImage({
     required String guardId,
     required File imageFile,
     required bool isFront,
   }) async {
-    final id = _cleanGuardId(guardId);
+    final id =
+        _cleanGuardId(guardId);
 
     try {
       if (!await imageFile.exists()) {
         debugPrint(
-          'Guard image does not exist: ${imageFile.path}',
+          'Image does not exist: ${imageFile.path}',
         );
+
         return null;
       }
 
@@ -109,37 +137,46 @@ class FirestoreService {
           ? 'front_id.jpg'
           : 'back_id.jpg';
 
-      final Reference ref = _storage
+      final reference = _storage
           .ref()
           .child(
             '$_guardsImagesFolder/$id/$fileName',
           );
 
-      final metadata = SettableMetadata(
-        contentType: _imageContentType(
+      final metadata =
+          SettableMetadata(
+        contentType:
+            _imageContentType(
           imageFile.path,
         ),
         customMetadata: {
           'guardId': id,
-          'side': isFront ? 'front' : 'back',
+          'side':
+              isFront ? 'front' : 'back',
         },
       );
 
-      final TaskSnapshot snapshot =
-          await ref.putFile(
+      final snapshot =
+          await reference.putFile(
         imageFile,
         metadata,
       );
 
-      if (snapshot.state != TaskState.success) {
+      if (snapshot.state !=
+          TaskState.success) {
         debugPrint(
-          'Guard image upload did not finish successfully.',
+          'Image upload did not complete successfully.',
         );
+
         return null;
       }
 
-      return await snapshot.ref.getDownloadURL();
-    } on FirebaseException catch (e, stackTrace) {
+      return await snapshot.ref
+          .getDownloadURL();
+    } on FirebaseException catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
         'Firebase Storage upload error '
         '[${e.code}]: ${e.message}',
@@ -150,9 +187,12 @@ class FirestoreService {
       );
 
       return null;
-    } catch (e, stackTrace) {
+    } catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
-        'Unexpected guard image upload error: $e',
+        'Unexpected image upload error: $e',
       );
 
       debugPrintStack(
@@ -163,29 +203,34 @@ class FirestoreService {
     }
   }
 
-  // ============================================================
-  // 2. رفع الصورتين بالتوازي
-  // ============================================================
+  // =========================================================
+  // رفع صورتي البطاقة بالتوازي
+  // =========================================================
 
-  Future<Map<String, String?>> uploadGuardImages({
+  Future<Map<String, String?>>
+      uploadGuardImages({
     required String guardId,
     required File frontImage,
     required File backImage,
   }) async {
-    final id = _cleanGuardId(guardId);
+    final id =
+        _cleanGuardId(guardId);
 
-    final results = await Future.wait<String?>([
-      uploadGuardImage(
-        guardId: id,
-        imageFile: frontImage,
-        isFront: true,
-      ),
-      uploadGuardImage(
-        guardId: id,
-        imageFile: backImage,
-        isFront: false,
-      ),
-    ]);
+    final results =
+        await Future.wait<String?>(
+      [
+        uploadGuardImage(
+          guardId: id,
+          imageFile: frontImage,
+          isFront: true,
+        ),
+        uploadGuardImage(
+          guardId: id,
+          imageFile: backImage,
+          isFront: false,
+        ),
+      ],
+    );
 
     return {
       'frontImageUrl': results[0],
@@ -193,19 +238,17 @@ class FirestoreService {
     };
   }
 
-  // ============================================================
-  // 3. إضافة / مزامنة حارس
-  // ============================================================
+  // =========================================================
+  // إضافة / مزامنة حارس
+  // =========================================================
 
   Future<void> addGuard({
     required String guardId,
     required String name,
     required String phone,
 
-    // للتوافق مع الكود القديم.
-    required double baseSalary,
-
     String role = 'فرد أمن',
+
     String? nationalId,
 
     String? frontImageUrl,
@@ -214,23 +257,30 @@ class FirestoreService {
     String? idExpiryDate,
     String? idStatus,
 
-    // نظام الرواتب الجديد.
+    double baseSalary = 0.0,
+
     String salaryType = 'monthly',
+
     double? salaryRate,
 
     bool isActive = true,
   }) async {
-    final id = _cleanGuardId(guardId);
+    final id =
+        _cleanGuardId(guardId);
 
     try {
-      final data = <String, dynamic>{
-        // نحتفظ بالـ ID داخل المستند أيضاً.
+      final data =
+          <String, dynamic>{
         'guardId': id,
 
-        'name': name.trim(),
-        'phone': phone.trim(),
+        'name':
+            name.trim(),
 
-        'role': role.trim(),
+        'phone':
+            phone.trim(),
+
+        'role':
+            role.trim(),
 
         'nationalId':
             nationalId?.trim() ?? '',
@@ -247,15 +297,19 @@ class FirestoreService {
         'idStatus':
             idStatus ?? '',
 
-        // Backward compatibility
-        'baseSalary': baseSalary,
+        // للتوافق مع النظام القديم
+        'baseSalary':
+            baseSalary,
 
-        // النظام الجديد
-        'salaryType': salaryType,
+        // نظام الرواتب الجديد
+        'salaryType':
+            salaryType,
+
         'salaryRate':
             salaryRate ?? baseSalary,
 
-        'isActive': isActive,
+        'isActive':
+            isActive,
 
         'createdAt':
             FieldValue.serverTimestamp(),
@@ -263,7 +317,7 @@ class FirestoreService {
         'updatedAt':
             FieldValue.serverTimestamp(),
 
-        // يفيد لو غيرنا Schema لاحقاً.
+        // يسهل عمليات migration لاحقاً
         'schemaVersion': 2,
       };
 
@@ -273,9 +327,12 @@ class FirestoreService {
               merge: true,
             ),
           );
-    } on FirebaseException catch (e, stackTrace) {
+    } on FirebaseException catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
-        'Firebase addGuard error '
+        'Firestore addGuard error '
         '[${e.code}]: ${e.message}',
       );
 
@@ -284,7 +341,10 @@ class FirestoreService {
       );
 
       rethrow;
-    } catch (e, stackTrace) {
+    } catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
         'Unexpected addGuard error: $e',
       );
@@ -297,9 +357,9 @@ class FirestoreService {
     }
   }
 
-  // ============================================================
-  // 4. تعديل الحارس
-  // ============================================================
+  // =========================================================
+  // تعديل بيانات الحارس
+  // =========================================================
 
   Future<void> updateGuard({
     required String guardId,
@@ -316,19 +376,25 @@ class FirestoreService {
     String? idStatus,
 
     double? baseSalary,
+
     String? salaryType,
     double? salaryRate,
 
     bool? isActive,
   }) async {
-    final id = _cleanGuardId(guardId);
+    final id =
+        _cleanGuardId(guardId);
 
     try {
-      final updateData = <String, dynamic>{
+      final updateData =
+          <String, dynamic>{
         'guardId': id,
 
-        'name': name.trim(),
-        'phone': phone.trim(),
+        'name':
+            name.trim(),
+
+        'phone':
+            phone.trim(),
 
         'updatedAt':
             FieldValue.serverTimestamp(),
@@ -337,7 +403,8 @@ class FirestoreService {
       };
 
       if (role != null) {
-        updateData['role'] = role.trim();
+        updateData['role'] =
+            role.trim();
       }
 
       if (nationalId != null) {
@@ -347,18 +414,21 @@ class FirestoreService {
 
       if (frontImageUrl != null &&
           frontImageUrl.isNotEmpty) {
-        updateData['frontImageUrl'] =
+        updateData[
+                'frontImageUrl'] =
             frontImageUrl;
       }
 
       if (backImageUrl != null &&
           backImageUrl.isNotEmpty) {
-        updateData['backImageUrl'] =
+        updateData[
+                'backImageUrl'] =
             backImageUrl;
       }
 
       if (idExpiryDate != null) {
-        updateData['idExpiryDate'] =
+        updateData[
+                'idExpiryDate'] =
             idExpiryDate;
       }
 
@@ -387,19 +457,20 @@ class FirestoreService {
             isActive;
       }
 
-      // لا نستخدم update().
-      //
-      // set + merge يضمن أنه حتى لو المستند
-      // غير موجود بسبب مشكلة مزامنة، سيتم إنشاؤه.
+      // set + merge أكثر أماناً من update
+      // في نظام Local-first.
       await _guards.doc(id).set(
             updateData,
             SetOptions(
               merge: true,
             ),
           );
-    } on FirebaseException catch (e, stackTrace) {
+    } on FirebaseException catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
-        'Firebase updateGuard error '
+        'Firestore updateGuard error '
         '[${e.code}]: ${e.message}',
       );
 
@@ -408,7 +479,10 @@ class FirestoreService {
       );
 
       rethrow;
-    } catch (e, stackTrace) {
+    } catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
         'Unexpected updateGuard error: $e',
       );
@@ -421,26 +495,33 @@ class FirestoreService {
     }
   }
 
-  // ============================================================
-  // 5. حذف الحارس
-  // ============================================================
+  // =========================================================
+  // حذف حارس
+  // =========================================================
 
   Future<void> deleteGuard({
     required String guardId,
   }) async {
-    final id = _cleanGuardId(guardId);
+    final id =
+        _cleanGuardId(guardId);
 
     try {
-      // نجعل حذف الصور وحذف المستند يعملان بالتوازي.
-      //
-      // فشل حذف الصور لا يجب أن يمنع حذف بيانات الحارس.
-      await Future.wait([
-        _deleteGuardImagesSafely(id),
-        _guards.doc(id).delete(),
-      ]);
-    } on FirebaseException catch (e, stackTrace) {
+      // نحذف البيانات أولاً.
+      await _guards
+          .doc(id)
+          .delete();
+
+      // ثم ننظف الصور.
+      // فشل تنظيف Storage لا يعيد الحارس.
+      await _deleteGuardImagesSafely(
+        id,
+      );
+    } on FirebaseException catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
-        'Firebase deleteGuard error '
+        'Firestore deleteGuard error '
         '[${e.code}]: ${e.message}',
       );
 
@@ -449,7 +530,10 @@ class FirestoreService {
       );
 
       rethrow;
-    } catch (e, stackTrace) {
+    } catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
         'Unexpected deleteGuard error: $e',
       );
@@ -465,20 +549,25 @@ class FirestoreService {
   Future<void> _deleteGuardImagesSafely(
     String guardId,
   ) async {
-    final frontRef = _storage.ref().child(
-          '$_guardsImagesFolder/'
-          '$guardId/front_id.jpg',
-        );
+    final frontReference =
+        _storage.ref().child(
+      '$_guardsImagesFolder/'
+      '$guardId/front_id.jpg',
+    );
 
-    final backRef = _storage.ref().child(
-          '$_guardsImagesFolder/'
-          '$guardId/back_id.jpg',
-        );
+    final backReference =
+        _storage.ref().child(
+      '$_guardsImagesFolder/'
+      '$guardId/back_id.jpg',
+    );
 
-    // الحذف بالتوازي.
     await Future.wait([
-      _deleteStorageFileSafely(frontRef),
-      _deleteStorageFileSafely(backRef),
+      _deleteStorageFileSafely(
+        frontReference,
+      ),
+      _deleteStorageFileSafely(
+        backReference,
+      ),
     ]);
   }
 
@@ -488,9 +577,8 @@ class FirestoreService {
     try {
       await reference.delete();
     } on FirebaseException catch (e) {
-      // إذا لم تكن الصورة موجودة فهذا ليس خطأ
-      // يحتاج لإيقاف عملية حذف الحارس.
-      if (e.code == 'object-not-found') {
+      if (e.code ==
+          'object-not-found') {
         return;
       }
 
@@ -505,35 +593,41 @@ class FirestoreService {
     }
   }
 
-  // ============================================================
-  // 6. جلب جميع الحراس
-  // ============================================================
+  // =========================================================
+  // جلب جميع أفراد الأمن
+  // =========================================================
 
   Future<List<Map<String, dynamic>>>
       getAllGuardsFromCloud() async {
     try {
-      final QuerySnapshot<Map<String, dynamic>>
-          snapshot = await _guards.get();
+      final snapshot =
+          await _guards.get();
 
-      final List<Map<String, dynamic>>
-          guards = [];
+      final guards =
+          <Map<String, dynamic>>[];
 
-      for (final doc in snapshot.docs) {
+      for (final document
+          in snapshot.docs) {
         try {
-          final data = doc.data();
+          final data =
+              document.data();
 
-          // في حال استخدام Soft Delete لاحقاً.
-          if (data['isActive'] == false) {
+          // لا نظهر الموظف المعطل.
+          if (data['isActive'] ==
+              false) {
             continue;
           }
 
           guards.add({
-            // كلاهما للتوافق مع الأكواد القديمة والجديدة.
-            'id': doc.id,
-            'guardId': doc.id,
+            'id':
+                document.id,
+
+            'guardId':
+                document.id,
 
             'name':
-                (data['name'] ?? 'بدون اسم')
+                (data['name'] ??
+                        'بدون اسم')
                     .toString(),
 
             'phone':
@@ -541,39 +635,45 @@ class FirestoreService {
                     .toString(),
 
             'role':
-                (data['role'] ?? 'فرد أمن')
+                (data['role'] ??
+                        'فرد أمن')
                     .toString(),
 
             'nationalId':
-                (data['nationalId'] ??
-                        data['national_id'] ??
-                        '')
-                    .toString(),
+                (
+                  data['nationalId'] ??
+                  data['national_id'] ??
+                  ''
+                ).toString(),
 
             'frontImageUrl':
-                (data['frontImageUrl'] ??
-                        data['id_front_image'] ??
-                        '')
-                    .toString(),
+                (
+                  data['frontImageUrl'] ??
+                  data['id_front_image'] ??
+                  ''
+                ).toString(),
 
             'backImageUrl':
-                (data['backImageUrl'] ??
-                        data['id_back_image'] ??
-                        '')
-                    .toString(),
+                (
+                  data['backImageUrl'] ??
+                  data['id_back_image'] ??
+                  ''
+                ).toString(),
 
             'idExpiryDate':
                 _normalizeDate(
                   data['idExpiryDate'] ??
-                      data['id_expiry_date'],
+                      data[
+                          'id_expiry_date'],
                 ) ??
                 '',
 
             'idStatus':
-                (data['idStatus'] ??
-                        data['id_status'] ??
-                        '')
-                    .toString(),
+                (
+                  data['idStatus'] ??
+                  data['id_status'] ??
+                  ''
+                ).toString(),
 
             'baseSalary':
                 _toDouble(
@@ -581,9 +681,10 @@ class FirestoreService {
             ),
 
             'salaryType':
-                (data['salaryType'] ??
-                        'monthly')
-                    .toString(),
+                (
+                  data['salaryType'] ??
+                  'monthly'
+                ).toString(),
 
             'salaryRate':
                 _toDouble(
@@ -592,7 +693,8 @@ class FirestoreService {
             ),
 
             'isActive':
-                data['isActive'] != false,
+                data['isActive'] !=
+                    false,
 
             'createdAt':
                 data['createdAt'],
@@ -602,16 +704,19 @@ class FirestoreService {
           });
         } catch (e) {
           debugPrint(
-            'Skipped invalid cloud guard '
-            '${doc.id}: $e',
+            'Invalid guard skipped '
+            '${document.id}: $e',
           );
         }
       }
 
       return guards;
-    } on FirebaseException catch (e, stackTrace) {
+    } on FirebaseException catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
-        'Firebase getAllGuards error '
+        'Firestore get guards error '
         '[${e.code}]: ${e.message}',
       );
 
@@ -620,9 +725,12 @@ class FirestoreService {
       );
 
       return [];
-    } catch (e, stackTrace) {
+    } catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
-        'Unexpected getAllGuards error: $e',
+        'Unexpected get guards error: $e',
       );
 
       debugPrintStack(
@@ -633,24 +741,29 @@ class FirestoreService {
     }
   }
 
-  // ============================================================
-  // 7. جلب حارس واحد
-  // ============================================================
+  // =========================================================
+  // جلب حارس واحد
+  // =========================================================
 
-  Future<Map<String, dynamic>?> getGuardById({
+  Future<Map<String, dynamic>?>
+      getGuardById({
     required String guardId,
   }) async {
-    final id = _cleanGuardId(guardId);
+    final id =
+        _cleanGuardId(guardId);
 
     try {
       final snapshot =
-          await _guards.doc(id).get();
+          await _guards
+              .doc(id)
+              .get();
 
       if (!snapshot.exists) {
         return null;
       }
 
-      final data = snapshot.data();
+      final data =
+          snapshot.data();
 
       if (data == null) {
         return null;
@@ -663,7 +776,7 @@ class FirestoreService {
       };
     } on FirebaseException catch (e) {
       debugPrint(
-        'getGuardById Firebase error '
+        'getGuardById error '
         '[${e.code}]: ${e.message}',
       );
 
@@ -677,31 +790,43 @@ class FirestoreService {
     }
   }
 
-  // ============================================================
-  // 8. تغيير حالة الحارس
-  // ============================================================
+  // =========================================================
+  // تفعيل / تعطيل حارس
+  // =========================================================
 
   Future<void> setGuardActiveStatus({
     required String guardId,
     required bool isActive,
   }) async {
-    final id = _cleanGuardId(guardId);
+    final id =
+        _cleanGuardId(guardId);
 
     try {
       await _guards.doc(id).set(
         {
-          'isActive': isActive,
+          'isActive':
+              isActive,
+
           'updatedAt':
-              FieldValue.serverTimestamp(),
+              FieldValue
+                  .serverTimestamp(),
         },
         SetOptions(
           merge: true,
         ),
       );
-    } catch (e) {
+    } catch (
+      e,
+      stackTrace,
+    ) {
       debugPrint(
         'setGuardActiveStatus error: $e',
       );
+
+      debugPrintStack(
+        stackTrace: stackTrace,
+      );
+
       rethrow;
     }
   }

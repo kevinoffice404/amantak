@@ -18,16 +18,19 @@ dependencies:
   path: ^1.9.1
 
   excel: ^4.0.6
-  share_plus: ^13.3.0
-  pdf: ^3.13.0
-  printing: ^5.15.0
+  share_plus: ^9.0.0
+  pdf: ^3.10.8
+  printing: ^5.11.1
+  
+  # 🚨 المكتبات الجديدة للاتصال بـ Firebase 🚨
+  firebase_core: ^2.30.0
+  cloud_firestore: ^4.15.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
 
-# 🚨 هذا هو السطر السحري الذي سيجبر كل المكتبات على التصالح والتوقف عن الشجار 🚨
 dependency_overrides:
   xml: ^7.0.1
   web: ^1.0.0
@@ -36,6 +39,5 @@ flutter:
   generate: true
   uses-material-design: true
 
-  # 🚨 التعديل الجديد: تعريف مسار الخطوط لكي يقرأها ملف الـ PDF 🚨
   assets:
     - assets/fonts/

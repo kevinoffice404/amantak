@@ -388,6 +388,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     File? frontImage;
     File? backImage;
     bool isDialogSaving = false;
+    bool isDialogClosed = false; // متغير لتفادي الانهيار عند الإلغاء
 
     showGlassDialog(
       context: context,
@@ -431,10 +432,349 @@ class _GuardsScreenState extends State<GuardsScreen> {
                     )
                   ),
                   const SizedBox(height: 12),
+                  // هنا كان القطع في الكود الخاص بك! قمت بإصلاحه وإكماله:
                   TextField(
                     controller: phoneController, 
                     keyboardType: TextInputType.phone, 
                     decoration: InputDecoration(
                       labelText: 'رقم الهاتف', 
                       prefixIcon: const Icon(Icons.phone_rounded), 
-                      filled:
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.5),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)
+                    )
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(16)),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: selectedRole,
+                        dropdownColor: AppColors.glassWhite.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(20),
+                        items: ['مدير الأمن', 'مشرف', 'فرد أمن'].map((String role) => DropdownMenuItem(value: role, child: Text(role, style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)))).toList(),
+                        onChanged: (newValue) => setDialogState(() => selectedRole = newValue!),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 30, color: Colors.black12),
+                  const Text('صور البطاقة الشخصية (إلزامي)', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Cairo', color: AppColors.primaryNavy)),
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _pickImage(true),
+                          child: Container(
+                            height: 80,
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(16)),
+                            child: frontImage != null 
+                                ? ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.file(frontImage!, fit: BoxFit.cover)) 
+                                : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.camera_alt_rounded, color: Colors.grey), SizedBox(height: 4), Text('الوجه الأمامي *', style: TextStyle(fontSize: 11, fontFamily: 'Cairo', color: Colors.red))]),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _pickImage(false),
+                          child: Container(
+                            height: 80,
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(16)),
+                            child: backImage != null 
+                                ? ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.file(backImage!, fit: BoxFit.cover)) 
+                                : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.camera_alt_rounded, color: Colors.grey), SizedBox(height: 4), Text('الوجه الخلفي *', style: TextStyle(fontSize: 11, fontFamily: 'Cairo', color: Colors.red))]),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+
+                  InkWell(
+                    onTap: () async {
+                      final now = DateTime.now();
+                      DateTime? picked = await showGlassDatePicker(
+                        context: context,
+                        initialDate: DateUtils.dateOnly(now),
+                        firstDate: DateUtils.dateOnly(now),
+                        lastDate: DateTime(now.year + 20),
+                      );
+                      if (picked != null) {
+                        setDialogState(() {
+                          selectedExpiryDate = picked;
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            selectedExpiryDate == null
+                                ? 'تاريخ الانتهاء (يوم/شهر/سنة) *'
+                                : 'الانتهاء: ${selectedExpiryDate!.year}-${selectedExpiryDate!.month.toString().padLeft(2, '0')}-${selectedExpiryDate!.day.toString().padLeft(2, '0')}',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.bold,
+                              color: selectedExpiryDate == null ? Colors.grey : AppColors.textDark,
+                            ),
+                          ),
+                          const Icon(Icons.calendar_month_rounded, color: AppColors.primaryNavy, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                GlassActionButton(
+                  label: 'إلغاء',
+                  onPressed: () {
+                    isDialogClosed = true;
+                    Navigator.pop(dialogContext);
+                  },
+                ),
+                GlassActionButton(
+                  label: isDialogSaving ? 'جارٍ الحفظ...' : 'حفظ',
+                  primary: true,
+                  icon: isDialogSaving ? null : Icons.check_rounded,
+                  onPressed: isDialogSaving 
+                    ? null 
+                    : () async {
+                      String inputName = nameController.text.trim();
+                      String inputPhone = phoneController.text.trim();
+                      
+                      if (inputName.isEmpty || selectedExpiryDate == null || frontImage == null || backImage == null) {
+                         ScaffoldMessenger.of(context).showSnackBar(
+                           const SnackBar(content: Text('الرجاء إدخال الاسم، تاريخ الانتهاء، وصور البطاقة!', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.red)
+                         );
+                         return;
+                      }
+
+                      bool isDuplicate = guardsList.any((guard) => guard['name'] == inputName);
+                      if (isDuplicate) {
+                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('هذا الاسم مسجل بالفعل! يرجى إدخال اسم مختلف.', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.red));
+                         return;
+                      }
+
+                      setDialogState(() => isDialogSaving = true);
+
+                      String? savedFrontPath;
+                      String? savedBackPath;
+                      try {
+                        savedFrontPath = await _saveImageLocally(frontImage!, 'front');
+                        savedBackPath = await _saveImageLocally(backImage!, 'back');
+
+                        String expiryStr = "${selectedExpiryDate!.year}-${selectedExpiryDate!.month.toString().padLeft(2, '0')}-${selectedExpiryDate!.day.toString().padLeft(2, '0')}";
+                        String finalStatus = _isExpired(selectedExpiryDate!) ? 'منتهية' : 'سارية';
+
+                        int newGuardId = await DatabaseHelper.instance.insertGuard({
+                          'name': inputName,
+                          'phone': inputPhone,
+                          'role': selectedRole,
+                          'id_front_image': savedFrontPath,
+                          'id_back_image': savedBackPath,
+                          'id_expiry_date': expiryStr,
+                          'id_status': finalStatus,
+                        });
+                        
+                        await _firestoreService.addGuard(
+                          guardId: newGuardId.toString(),
+                          name: inputName,
+                          phone: inputPhone.isNotEmpty ? inputPhone : "غير متوفر",
+                          baseSalary: 0.0,
+                        ).timeout(const Duration(seconds: 5), onTimeout: () {
+                           debugPrint('انتهى وقت الاتصال بالسحابة (سيتم الحفظ محلياً)');
+                        });
+
+                      } catch (e) {
+                        if (isDialogClosed) return;
+                        for (final path in [savedFrontPath, savedBackPath]) {
+                          if (path == null) continue;
+                          try {
+                            final file = File(path);
+                            if (await file.exists()) await file.delete();
+                          } catch (_) {}
+                        }
+                        if (mounted) {
+                          setDialogState(() => isDialogSaving = false);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر حفظ بيانات الحارس. تحقق من الاتصال.', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.red));
+                        }
+                        return;
+                      }
+
+                      if (mounted && !isDialogClosed) {
+                        Navigator.pop(dialogContext);
+                        _refreshGuards();
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحفظ بنجاح!', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.green));
+                      }
+                    },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      isDialogClosed = true;
+      nameController.dispose();
+      phoneController.dispose();
+    });
+  }
+
+  // ==== القائمة السفلية ====
+  void _showGuardOptions(Map<String, dynamic> person) {
+    showGlassBottomSheet(
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.4), borderRadius: BorderRadius.circular(10))),
+              const SizedBox(height: 16),
+              Text(person['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, fontFamily: 'Cairo', color: AppColors.primaryNavy)),
+              const SizedBox(height: 16),
+              const Divider(height: 1, color: Colors.black12),
+              const SizedBox(height: 10),
+              
+              ListTile(
+                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.withOpacity(0.15), shape: BoxShape.circle), child: const Icon(Icons.assignment_outlined, color: Colors.blue)),
+                title: const Text('سجل الحضور والجزاءات', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => GuardRecordsScreen(guardName: person['name'])));
+                },
+              ),
+              ListTile(
+                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.orange.withOpacity(0.15), shape: BoxShape.circle), child: const Icon(Icons.edit_rounded, color: Colors.orange)),
+                title: const Text('تعديل البيانات والصور', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showEditGuardDialog(person);
+                },
+              ),
+              ListTile(
+                leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.red.withOpacity(0.15), shape: BoxShape.circle), child: const Icon(Icons.delete_outline_rounded, color: Colors.red)),
+                title: const Text('حذف الحارس', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDelete(context, person['id'], person['name']);
+                },
+              ),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
+  // ==== دالة بناء الشاشة (تم إعادتها بعد القطع) ====
+  @override
+  Widget build(BuildContext context) {
+    return GlassPage(
+      title: 'إدارة أفراد الأمن',
+      child: Stack(
+        children: [
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : guardsList.isEmpty
+                  ? const Center(child: Text('لا يوجد أفراد أمن مسجلين حالياً.\nاضغط على "إضافة حارس" للبدء.', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: AppColors.textMuted, fontFamily: 'Cairo', fontWeight: FontWeight.w600)))
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                      itemCount: guardsList.length,
+                      itemBuilder: (context, index) {
+                        return _buildPersonCard(guardsList[index]);
+                      },
+                    ),
+          
+          PositionedDirectional(
+            bottom: 24,
+            end: 24,
+            child: FloatingActionButton.extended(
+              onPressed: _showAddGuardDialog,
+              elevation: 4,
+              backgroundColor: AppColors.accentGold,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('إضافة حارس', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontFamily: 'Cairo')),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==== دالة بناء بطاقة الحارس (تم إعادتها بعد القطع) ====
+  Widget _buildPersonCard(Map<String, dynamic> person) {
+    String name = person['name'];
+    String role = person['role'];
+    String id = person['id'].toString();
+    String phone = person['phone'] ?? 'غير متوفر';
+    String idStatus = person['id_status'] ?? '';
+
+    Color roleColor = (role == 'مدير الأمن' || role == 'مسؤول') ? Colors.redAccent : (role == 'مشرف' ? AppColors.accentGold : Colors.green);
+    IconData roleIcon = (role == 'مدير الأمن' || role == 'مسؤول') ? Icons.admin_panel_settings_rounded : (role == 'مشرف' ? Icons.supervised_user_circle_rounded : Icons.security_rounded);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: GlassSurface(
+        padding: EdgeInsets.zero,
+        borderRadius: BorderRadius.circular(20),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          leading: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: roleColor.withOpacity(0.1), 
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(0.5))
+            ),
+            child: Icon(roleIcon, color: roleColor, size: 26)
+          ),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryNavy, fontFamily: 'Cairo'), overflow: TextOverflow.ellipsis),
+              ),
+              if (idStatus == 'منتهية') 
+                const Padding(padding: EdgeInsets.only(right: 8.0), child: Icon(Icons.warning_rounded, color: Colors.red, size: 18))
+            ],
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('كود: $id', style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                Text('هاتف: $phone', style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: roleColor.withOpacity(0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: roleColor.withOpacity(0.3))),
+            child: Text(role, style: TextStyle(color: roleColor, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'Cairo')),
+          ),
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => GuardDetailsScreen(person: person)));
+          },
+          onLongPress: () {
+            _showGuardOptions(person);
+          },
+        ),
+      ),
+    );
+  }
+}

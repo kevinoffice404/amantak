@@ -52,9 +52,14 @@ android {
 
     buildTypes {
         release {
+            // إعدادات توقيع التطبيق
             signingConfig signingConfigs.debug
+            
+            // تفعيل ضغط حجم التطبيق
             minifyEnabled true
             shrinkResources true
+            
+            // 🚨 التعديل الجديد: ربط ملف الاستثناءات لمنع توقف البناء 🚨
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

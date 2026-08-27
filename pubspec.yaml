@@ -22,9 +22,13 @@ dependencies:
   pdf: ^3.10.8
   printing: ^5.11.1
   
-  # 🚨 المكتبات الجديدة للاتصال بـ Firebase 🚨
+  # 🚨 المكتبات للاتصال بـ Firebase ورفع الصور 🚨
   firebase_core: ^2.30.0
   cloud_firestore: ^4.15.0
+  firebase_storage: ^11.6.0
+  
+  # 🚨 مكتبة التحليل الذكي للصور (قراءة النصوص) 🚨
+  google_mlkit_text_recognition: ^0.12.0
 
 dev_dependencies:
   flutter_test:

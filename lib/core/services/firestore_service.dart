@@ -5,23 +5,23 @@ import 'package:flutter/foundation.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance; // خدمة رفع الصور
+  final FirebaseStorage _storage = FirebaseStorage.instance; 
 
-  // 1. دالة رفع الصورة إلى السحابة (Firebase Storage)
+  // 1. دالة رفع الصورة إلى السحابة وإرجاع الرابط
   Future<String?> uploadGuardImage({required String guardId, required File imageFile, required bool isFront}) async {
     try {
       String fileName = isFront ? 'front_id.jpg' : 'back_id.jpg';
       Reference ref = _storage.ref().child('guards_images/$guardId/$fileName');
       UploadTask uploadTask = ref.putFile(imageFile);
       TaskSnapshot snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL(); // إرجاع رابط الصورة
+      return await snapshot.ref.getDownloadURL(); 
     } catch (e) {
       debugPrint('Error uploading image: $e');
-      return null;
+      return null; 
     }
   }
 
-  // 2. دالة إضافة حارس جديد (مع روابط الصور)
+  // 2. دالة إضافة حارس جديد (تشمل روابط الصور والرقم القومي)
   Future<void> addGuard({
     required String guardId, 
     required String name, 
@@ -29,13 +29,15 @@ class FirestoreService {
     required double baseSalary,
     String? frontImageUrl, 
     String? backImageUrl,
+    String? nationalId, 
   }) async {
     try {
       await _db.collection('guards').doc(guardId).set({
         'name': name,
         'phone': phone,
         'baseSalary': baseSalary,
-        'frontImageUrl': frontImageUrl ?? '',
+        'nationalId': nationalId ?? '',
+        'frontImageUrl': frontImageUrl ?? '', 
         'backImageUrl': backImageUrl ?? '',
         'isActive': true,
         'createdAt': FieldValue.serverTimestamp(),
@@ -46,7 +48,7 @@ class FirestoreService {
     }
   }
 
-  // 3. دالة تعديل بيانات الحارس
+  // 3. دالة تعديل بيانات حارس 
   Future<void> updateGuard({
     required String guardId, 
     required String name, 
@@ -70,7 +72,7 @@ class FirestoreService {
     }
   }
 
-  // 4. دالة حذف الحارس (وصوره من السحابة)
+  // 4. دالة حذف حارس وصوره من السحابة
   Future<void> deleteGuard({required String guardId}) async {
     try {
       await _db.collection('guards').doc(guardId).delete();
@@ -84,7 +86,7 @@ class FirestoreService {
     }
   }
 
-  // 5. دالة جلب الحراس للمزامنة
+  // 5. جلب البيانات للمزامنة
   Future<List<Map<String, dynamic>>> getAllGuardsFromCloud() async {
     try {
       QuerySnapshot snapshot = await _db.collection('guards').get();

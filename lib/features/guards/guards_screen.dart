@@ -125,7 +125,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     bool isDialogClosed = false; 
 
     // تهيئة محرك التعرف على النصوص باللغة العربية
-    final textRecognizer = TextRecognizer(script: TextRecognitionScript.arabic);
+    final textRecognizer = TextRecognizer(); // المحرك الافتراضي للذكاء الاصطناعي
 
     showGlassDialog(
       context: context,

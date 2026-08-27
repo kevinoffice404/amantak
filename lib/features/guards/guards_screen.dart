@@ -34,17 +34,45 @@ class _GuardsScreenState extends State<GuardsScreen> {
     _refreshGuards();
   }
 
-  // دالة لجلب البيانات من قاعدة البيانات المحلية وعرضها
+  // ==== دالة استرجاع وعرض البيانات (الذكية) ====
   Future<void> _refreshGuards() async {
     if (mounted) setState(() => isLoading = true);
 
     try {
-      final data = await DatabaseHelper.instance.getAllGuards();
+      // 1. محاولة جلب البيانات من قاعدة البيانات المحلية (الهاتف) أولاً
+      List<Map<String, dynamic>> data = await DatabaseHelper.instance.getAllGuards();
+
+      // 2. إذا كانت ذاكرة الهاتف فارغة (بعد حذف التطبيق مثلاً)
+      if (data.isEmpty) {
+        debugPrint('الذاكرة المحلية فارغة، جاري استرجاع البيانات من Firebase...');
+        
+        // جلب البيانات من السحابة
+        final cloudData = await _firestoreService.getAllGuardsFromCloud();
+
+        // إعادة حفظ البيانات القادمة من السحابة داخل هاتف المستخدم
+        for (var guard in cloudData) {
+          await DatabaseHelper.instance.insertGuard({
+            'name': guard['name'] ?? 'بدون اسم',
+            'phone': guard['phone'] ?? 'غير متوفر',
+            'role': 'فرد أمن', 
+            'id_front_image': '', // مسار فارغ مؤقتاً لحين برمجة رفع الصور للسحابة
+            'id_back_image': '',
+            'id_expiry_date': DateTime.now().add(const Duration(days: 365)).toString(), 
+            'id_status': 'سارية',
+          });
+        }
+        
+        // تحديث القائمة بالبيانات الجديدة التي تم حفظها للتو
+        data = await DatabaseHelper.instance.getAllGuards();
+      }
+
+      // 3. عرض البيانات على الشاشة
       if (!mounted) return;
       setState(() {
         guardsList = data;
         isLoading = false;
       });
+      
     } catch (_) {
       if (!mounted) return;
       setState(() => isLoading = false);
@@ -86,7 +114,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     } catch (_) {}
   }
 
-  // ==== نافذة تأكيد الحذف الزجاجية ====
+  // ==== نافذة تأكيد الحذف الزجاجية (مع الحذف من السحابة) ====
   void _confirmDelete(BuildContext context, int id, String name) {
     showGlassDialog(
       context: context,
@@ -132,7 +160,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     );
   }
 
-  // ==== نافذة التعديل الزجاجية ====
+  // ==== نافذة التعديل الزجاجية (مع التعديل في السحابة) ====
   void _showEditGuardDialog(Map<String, dynamic> person) {
     final TextEditingController nameController = TextEditingController(text: person['name']);
     final TextEditingController phoneController = TextEditingController(text: person['phone']);
@@ -402,7 +430,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     });
   }
 
-  // ==== نافذة الإضافة الزجاجية ====
+  // ==== نافذة الإضافة الزجاجية (مع الإضافة للسحابة) ====
   void _showAddGuardDialog() {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController phoneController = TextEditingController();

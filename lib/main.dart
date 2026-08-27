@@ -1,12 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+// استدعاء مكتبة فايربيز الأساسية
+import 'package:firebase_core/firebase_core.dart'; 
+
 import 'core/theme/app_colors.dart';
 import 'core/widgets/glass.dart';
 import 'features/splash/splash_screen.dart';
 
-void main() {
+// تحويل الدالة الرئيسية إلى async لتنتظر الاتصال بالسحابة قبل تشغيل التطبيق
+void main() async {
+  // التأكد من تهيئة واجهة المستخدم ومحرك فلاتر أولاً
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // محاولة الاتصال بقاعدة بيانات فايربيز باستخدام مفاتيحك الخاصة
+  try {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyA7eO1_OqT8pzSu_n9ssB6OO3TOJlYVkiM", 
+        appId: "1:383666012257:web:07171f165f7394df74ea20", 
+        messagingSenderId: "383666012257",
+        projectId: "amantak2-30b21", 
+      ),
+    );
+    debugPrint("✅ تم الاتصال بخوادم Firebase بنجاح!");
+  } catch (e) {
+    debugPrint("❌ حدث خطأ أثناء الاتصال: $e");
+  }
+
+  // تشغيل واجهة التطبيق بعد الانتهاء من التهيئة
   runApp(const SecurityManagerApp());
 }
 
@@ -60,7 +82,7 @@ class SecurityManagerApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 5,
         ),
-        inputDecorationTheme: InputDecorationTheme(
+        inputDecorationTheme: const InputDecorationTheme(
           filled: true,
           fillColor: Colors.white54,
           border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(18)), borderSide: BorderSide.none),

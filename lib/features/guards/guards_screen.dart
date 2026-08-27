@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart'; // 🚨 مكتبة الذكاء الاصطناعي 🚨
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/database_helper.dart'; 
@@ -79,7 +79,6 @@ class _GuardsScreenState extends State<GuardsScreen> {
     return savedImage.path;
   }
 
-  // ==== نافذة تأكيد الحذف ====
   void _confirmDelete(BuildContext context, int id, String name) {
     showGlassDialog(
       context: context,
@@ -112,11 +111,10 @@ class _GuardsScreenState extends State<GuardsScreen> {
     );
   }
 
-  // ==== نافذة الإضافة (مع التحليل الذكي) ====
   void _showAddGuardDialog() {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController phoneController = TextEditingController();
-    final TextEditingController nationalIdController = TextEditingController(); // 🚨 حقل جديد للرقم القومي
+    final TextEditingController nationalIdController = TextEditingController(); 
     String selectedRole = 'فرد أمن'; 
     DateTime? selectedExpiryDate; 
     File? frontImage;
@@ -124,8 +122,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
     bool isDialogSaving = false;
     bool isDialogClosed = false; 
 
-    // تهيئة محرك التعرف على النصوص باللغة العربية
-    final textRecognizer = TextRecognizer(); // المحرك الافتراضي للذكاء الاصطناعي
+    final textRecognizer = TextRecognizer(); 
 
     showGlassDialog(
       context: context,
@@ -133,7 +130,6 @@ class _GuardsScreenState extends State<GuardsScreen> {
         return StatefulBuilder( 
           builder: (context, setDialogState) {
             
-            // 🚨 دالة التقاط الصورة وتحليلها 🚨
             Future<void> _pickAndAnalyzeImage(bool isFront) async {
               final XFile? pickedFile = await _picker.pickImage(
                 source: ImageSource.camera,
@@ -141,7 +137,6 @@ class _GuardsScreenState extends State<GuardsScreen> {
               );
               
               if (pickedFile != null && context.mounted) {
-                // 1. عرض إشعار جاري التحليل
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Row(
@@ -161,29 +156,25 @@ class _GuardsScreenState extends State<GuardsScreen> {
                   else backImage = File(pickedFile.path);
                 });
 
-                // 2. بدء التحليل الذكي للصورة
                 try {
                   final inputImage = InputImage.fromFilePath(pickedFile.path);
                   final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
                   String fullText = recognizedText.text;
+                  String cleanText = fullText.replaceAll(' ', ''); 
 
                   setDialogState(() {
                     if (isFront) {
-                      // أ. استخراج الرقم القومي (14 رقم تبدأ بـ 2 أو 3)
-                      RegExp idRegExp = RegExp(r'\b[2-3]\d{13}\b');
-                      var idMatch = idRegExp.firstMatch(fullText);
+                      RegExp idRegExp = RegExp(r'[2-3]\d{13}');
+                      var idMatch = idRegExp.firstMatch(cleanText);
                       if (idMatch != null) {
                         nationalIdController.text = idMatch.group(0) ?? '';
                       }
 
-                      // ب. استخراج الاسم (أطول جملة عربية بدون أرقام)
                       String bestName = '';
                       for (TextBlock block in recognizedText.blocks) {
                         for (TextLine line in block.lines) {
                           String text = line.text.trim();
-                          // التحقق من أن السطر يحتوي على حروف عربية ومسافات فقط
                           if (RegExp(r'^[\u0600-\u06FF\s]+$').hasMatch(text)) {
-                            // نختار السطر الذي يحتوي على 3 كلمات أو أكثر
                             if (text.split(' ').length >= 3 && text.length > bestName.length) {
                               bestName = text;
                             }
@@ -193,7 +184,6 @@ class _GuardsScreenState extends State<GuardsScreen> {
                       if (bestName.isNotEmpty && nameController.text.isEmpty) nameController.text = bestName;
                       
                     } else {
-                      // ج. استخراج تاريخ الانتهاء من الوجه الخلفي (يبحث عن تنسيق سنة/شهر/يوم)
                       RegExp dateRegExp = RegExp(r'\d{4}[-/]\d{2}[-/]\d{2}');
                       var dateMatch = dateRegExp.firstMatch(fullText);
                       if (dateMatch != null) {
@@ -203,13 +193,14 @@ class _GuardsScreenState extends State<GuardsScreen> {
                     }
                   });
                   
-                  // 3. إخفاء الإشعار القديم وإظهار رسالة النجاح
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم استخراج البيانات بنجاح!', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.green),
-                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم استخراج البيانات بنجاح!', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: Colors.green),
+                    );
+                  }
                 } catch (e) {
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  if (context.mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 }
               }
             }
@@ -217,12 +208,11 @@ class _GuardsScreenState extends State<GuardsScreen> {
             return GlassDialog(
               title: const Text('إضافة فرد أمن جديد'),
               titleIcon: const Icon(Icons.person_add_rounded, color: AppColors.primaryNavy),
-              content: SingleChildScrollView( // لتجنب مشكلة الشاشة الصغيرة
+              content: SingleChildScrollView( 
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // التنبيه للمستخدم ليصور البطاقة أولاً
                     Container(
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 12),
@@ -377,17 +367,16 @@ class _GuardsScreenState extends State<GuardsScreen> {
                       setDialogState(() => isDialogSaving = true);
 
                       try {
-                        // حفظ الصور محلياً
                         String savedFrontPath = await _saveImageLocally(frontImage!, 'front');
                         String savedBackPath = await _saveImageLocally(backImage!, 'back');
-
                         String expiryStr = "${selectedExpiryDate!.year}-${selectedExpiryDate!.month.toString().padLeft(2, '0')}-${selectedExpiryDate!.day.toString().padLeft(2, '0')}";
                         String finalStatus = _isExpired(selectedExpiryDate!) ? 'منتهية' : 'سارية';
 
-                        // حفظ الحارس محلياً في الهاتف
                         int newGuardId = await DatabaseHelper.instance.insertGuard({
                           'name': inputName,
                           'phone': phoneController.text.trim(),
+                          // إذا رغبت بحفظ الرقم القومي محلياً، تأكد من وجود حقل national_id في جدول DatabaseHelper الخاص بك
+                          // 'national_id': nationalIdController.text.trim(), 
                           'role': selectedRole,
                           'id_front_image': savedFrontPath,
                           'id_back_image': savedBackPath,
@@ -395,7 +384,6 @@ class _GuardsScreenState extends State<GuardsScreen> {
                           'id_status': finalStatus,
                         });
                         
-                        // 🚨 رفع الصور والبيانات إلى السحابة فوراً 🚨
                         String? cloudFrontUrl = await _firestoreService.uploadGuardImage(guardId: newGuardId.toString(), imageFile: frontImage!, isFront: true);
                         String? cloudBackUrl = await _firestoreService.uploadGuardImage(guardId: newGuardId.toString(), imageFile: backImage!, isFront: false);
 
@@ -404,6 +392,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
                           name: inputName,
                           phone: phoneController.text.trim(),
                           baseSalary: 0.0,
+                          nationalId: nationalIdController.text.trim(),
                           frontImageUrl: cloudFrontUrl,
                           backImageUrl: cloudBackUrl,
                         ).timeout(const Duration(seconds: 10));
@@ -429,14 +418,13 @@ class _GuardsScreenState extends State<GuardsScreen> {
       },
     ).then((_) {
       isDialogClosed = true;
-      textRecognizer.close(); // 🚨 إغلاق المحرك لتحرير ذاكرة الهاتف 🚨
+      textRecognizer.close(); 
       nameController.dispose();
       phoneController.dispose();
       nationalIdController.dispose();
     });
   }
 
-  // ==== القائمة السفلية ==== (لم تتغير)
   void _showGuardOptions(Map<String, dynamic> person) {
     showGlassBottomSheet(
       context: context,

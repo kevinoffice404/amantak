@@ -225,7 +225,7 @@ class _GuardsScreenState extends State<GuardsScreen> {
                     // التنبيه للمستخدم ليصور البطاقة أولاً
                     Container(
                       padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.bottom(12),
+                      margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withOpacity(0.3))),
                       child: const Row(
                         children: [

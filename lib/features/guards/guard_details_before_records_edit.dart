@@ -7,8 +7,6 @@ import '../../core/utils/database_helper.dart';
 import '../../core/widgets/glass.dart';
 // استدعاء شاشة التفاصيل المالية
 import 'financial_details_screen.dart';
-import 'guard_records_screen.dart';
-import 'edit_guard_screen.dart';
 
 class GuardDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> person;
@@ -200,76 +198,6 @@ class GuardDetailsScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 15),
-
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.fact_check_rounded),
-                label: const Text(
-                  'سجل الحضور والانصراف والجزاءات',
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => GuardRecordsScreen(
-                        guardName: name,
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 15),
-
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.edit_rounded),
-                label: const Text(
-                  'تعديل بيانات الحارس',
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EditGuardScreen(
-                        guard: person,
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade700,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ),
-
             const SizedBox(height: 30),
           ],
         ),

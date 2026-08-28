@@ -184,7 +184,7 @@ class FirestoreService {
           .getDownloadURL();
     } on FirebaseException catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Firebase Storage upload error '
@@ -198,7 +198,7 @@ class FirestoreService {
       return null;
     } catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Unexpected image upload error: $e',
@@ -338,7 +338,7 @@ class FirestoreService {
           );
     } on FirebaseException catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Firestore addGuard error '
@@ -352,7 +352,7 @@ class FirestoreService {
       rethrow;
     } catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Unexpected addGuard error: $e',
@@ -476,7 +476,7 @@ class FirestoreService {
           );
     } on FirebaseException catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Firestore updateGuard error '
@@ -490,7 +490,7 @@ class FirestoreService {
       rethrow;
     } catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Unexpected updateGuard error: $e',
@@ -527,7 +527,7 @@ class FirestoreService {
       );
     } on FirebaseException catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Firestore deleteGuard error '
@@ -541,7 +541,7 @@ class FirestoreService {
       rethrow;
     } catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Unexpected deleteGuard error: $e',
@@ -722,7 +722,7 @@ class FirestoreService {
       return guards;
     } on FirebaseException catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Firestore get guards error '
@@ -736,7 +736,7 @@ class FirestoreService {
       return [];
     } catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'Unexpected get guards error: $e',
@@ -826,7 +826,7 @@ class FirestoreService {
       );
     } catch (
       e,
-      stackTrace,
+      stackTrace
     ) {
       debugPrint(
         'setGuardActiveStatus error: $e',

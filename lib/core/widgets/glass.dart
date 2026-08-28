@@ -54,27 +54,44 @@ class GlassSurface extends StatelessWidget {
     this.color = AppColors.glassWhite,
     this.border,
     this.shadows,
-    this.blur = 12,
+    this.blur = 0,
   });
 
   @override
   Widget build(BuildContext context) {
+    final surface = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: borderRadius,
+        border: border ?? Border.all(color: AppColors.glassBorder),
+        boxShadow: shadows ??
+            const [
+              BoxShadow(
+                color: Color(0x18163A63),
+                blurRadius: 14,
+                offset: Offset(0, 6),
+              ),
+            ],
+      ),
+      child: child,
+    );
+
+    // BackdropFilter is expensive while scrolling/animating on many Android
+    // devices. Keep the glass look with translucency by default and only
+    // enable real blur for isolated surfaces that explicitly request it.
+    if (blur <= 0) {
+      return ClipRRect(
+        borderRadius: borderRadius,
+        child: surface,
+      );
+    }
+
     return ClipRRect(
       borderRadius: borderRadius,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: borderRadius,
-            border: border ?? Border.all(color: AppColors.glassBorder),
-            boxShadow: shadows ?? [
-              const BoxShadow(color: Color(0x22163A63), blurRadius: 24, offset: Offset(0, 10)),
-            ],
-          ),
-          child: child,
-        ),
+        child: surface,
       ),
     );
   }

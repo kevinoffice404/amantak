@@ -23,7 +23,7 @@ Future<T?> showGlassDialog<T>({
           children: [
             Positioned.fill(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
                 child: Container(color: Colors.white.withOpacity(0.035)),
               ),
             ),
@@ -83,9 +83,7 @@ class GlassDialog extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(30),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
+          child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topRight,
@@ -104,14 +102,14 @@ class GlassDialog extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primaryNavy.withOpacity(0.14),
-                    blurRadius: 40,
-                    spreadRadius: 2,
+                    blurRadius: 24,
+                    spreadRadius: 1,
                     offset: const Offset(0, 18),
                   ),
                   BoxShadow(
                     color: Colors.white.withOpacity(0.75),
-                    blurRadius: 18,
-                    spreadRadius: -4,
+                    blurRadius: 10,
+                    spreadRadius: -3,
                     offset: const Offset(-8, -8),
                   ),
                 ],
@@ -186,7 +184,6 @@ class GlassDialog extends StatelessWidget {
                 ),
               ),
             ),
-          ),
         ),
       ),
     );
@@ -264,9 +261,7 @@ Future<T?> showGlassBottomSheet<T>({
       textDirection: TextDirection.rtl,
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(34)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
+        child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -282,7 +277,6 @@ Future<T?> showGlassBottomSheet<T>({
             ),
             child: SafeArea(top: false, child: builder(context)),
           ),
-        ),
       ),
     ),
   );

@@ -345,14 +345,27 @@ class _ClockWidgetState extends State<_ClockWidget> {
   void initState() {
     super.initState();
     _updateTime();
-    // المؤقت يعمل كل ثانية ليضمن دقة الساعة
-    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _updateTime());
+    _scheduleMinuteUpdates();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  void _scheduleMinuteUpdates() {
+    final now = DateTime.now();
+    final millisecondsToNextMinute =
+        60000 - (now.second * 1000 + now.millisecond);
+    _timer = Timer(Duration(milliseconds: millisecondsToNextMinute), () {
+      if (!mounted) return;
+      _updateTime();
+      _timer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _updateTime(),
+      );
+    });
   }
 
   void _updateTime() {

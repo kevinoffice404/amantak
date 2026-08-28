@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/utils/database_helper.dart'; // 🚨 تم إضافة مسار قاعدة البيانات الصحيح هنا
+import '../../core/utils/database_helper.dart';
 
 // استدعاء مكونات الزجاج
 import '../../core/widgets/glass.dart';
@@ -30,11 +30,6 @@ class GuardDetailsScreen extends StatelessWidget {
         : (person['id_status'] ?? 'غير محدد');
     String? frontImg = person['id_front_image'];
     String? backImg = person['id_back_image'];
-
-    // افتراض قيم مالية (قم بتحديثها لتقرأ من قاعدة البيانات لاحقاً)
-    double basicSalary = person['basic_salary']?.toDouble() ?? 9000.0;
-    double totalAdvances = person['total_advances']?.toDouble() ?? 1000.0;
-    double totalPenalties = person['total_penalties']?.toDouble() ?? 250.0;
 
     Color roleColor = (role == 'مدير الأمن' || role == 'مسؤول') ? Colors.redAccent : (role == 'مشرف' ? AppColors.accentGold : Colors.green);
     IconData roleIcon = (role == 'مدير الأمن' || role == 'مسؤول') ? Icons.admin_panel_settings_rounded : (role == 'مشرف' ? Icons.supervised_user_circle_rounded : Icons.security_rounded);
@@ -117,9 +112,7 @@ class GuardDetailsScreen extends StatelessWidget {
                           width: double.infinity,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: frontImg != null && File(frontImg).existsSync()
-                                ? Image.file(File(frontImg), fit: BoxFit.cover)
-                                : const Center(child: Text('لا توجد صورة', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey))),
+                            child: _buildIdImage(frontImg),
                           ),
                         ),
                       ),
@@ -143,9 +136,7 @@ class GuardDetailsScreen extends StatelessWidget {
                           width: double.infinity,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: backImg != null && File(backImg).existsSync()
-                                ? Image.file(File(backImg), fit: BoxFit.cover)
-                                : const Center(child: Text('لا توجد صورة', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey))),
+                            child: _buildIdImage(backImg),
                           ),
                         ),
                       ),
@@ -214,25 +205,65 @@ class GuardDetailsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildIdImage(String? path) {
+    final value = path?.trim() ?? '';
+    if (value.isEmpty) {
+      return const Center(
+        child: Text('لا توجد صورة', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey)),
+      );
+    }
+
+    Widget errorWidget(Object _, StackTrace? __) => const Center(
+      child: Text('تعذر تحميل الصورة', style: TextStyle(fontFamily: 'Cairo', color: Colors.grey)),
+    );
+
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return Image.network(
+        value,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.low,
+        errorBuilder: (context, error, stackTrace) => errorWidget(error, stackTrace),
+      );
+    }
+
+    return Image.file(
+      File(value),
+      fit: BoxFit.cover,
+      cacheWidth: 700,
+      filterQuality: FilterQuality.low,
+      errorBuilder: (context, error, stackTrace) => errorWidget(error, stackTrace),
+    );
+  }
+
   Widget _buildInfoRow(IconData icon, String title, String value, {Color? valueColor}) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryNavy.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10)
-              ),
-              child: Icon(icon, size: 18, color: AppColors.primaryNavy),
-            ),
-            const SizedBox(width: 12),
-            Text(title, style: const TextStyle(fontFamily: 'Cairo', color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.w700)),
-          ],
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primaryNavy.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.primaryNavy),
         ),
-        Text(value, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 15, color: valueColor ?? AppColors.primaryNavy)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontFamily: 'Cairo', color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.left,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 15, color: valueColor ?? AppColors.primaryNavy),
+          ),
+        ),
       ],
     );
   }

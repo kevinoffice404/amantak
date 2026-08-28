@@ -398,6 +398,64 @@ class _GuardsScreenState extends State<GuardsScreen>
     return match?.group(0);
   }
 
+
+  String? _extractName(String text) {
+    final lines = text
+        .split('\n')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    final ignored = [
+      'جمهورية',
+      'العربية',
+      'مصر',
+      'بطاقة',
+      'شخصية',
+      'الرقم',
+      'القومي',
+      'تاريخ',
+      'ميلاد',
+      'انتهاء',
+      'وزارة',
+      'الداخلية'
+    ];
+
+    for (final line in lines) {
+      if (line.length < 8) continue;
+
+      if (RegExp(r'[0-9]').hasMatch(line)) {
+        continue;
+      }
+
+      bool bad = false;
+
+      for (final word in ignored) {
+        if (line.contains(word)) {
+          bad = true;
+        }
+      }
+
+      if (!bad) {
+        return line;
+      }
+    }
+
+    return null;
+  }
+
+
+  bool _isValidIdCard(String text) {
+    final id = _extractNationalId(text);
+
+    final hasArabic =
+        RegExp(r'[\u0600-\u06FF]')
+            .hasMatch(text);
+
+    return id != null || hasArabic;
+  }
+
+
   DateTime? _extractExpiryDate(
     String text,
   ) {
@@ -731,16 +789,44 @@ class _GuardsScreenState extends State<GuardsScreen>
                     return;
                   }
 
+                  final ocrText =
+                      recognizedText.text;
+
+
+                  if (!_isValidIdCard(ocrText)) {
+                    _showMessage(
+                      'الصورة لا تبدو بطاقة شخصية، يرجى إعادة التصوير.',
+                      Colors.red,
+                    );
+                    return;
+                  }
+
+
                   if (isFront) {
+
                     final id =
                         _extractNationalId(
-                      recognizedText.text,
+                      ocrText,
                     );
 
                     if (id != null) {
                       nationalIdController.text =
                           id;
                     }
+
+
+                    final extractedName =
+                        _extractName(
+                      ocrText,
+                    );
+
+                    if (extractedName != null &&
+                        nameController.text.trim().isEmpty) {
+
+                      nameController.text =
+                          extractedName;
+                    }
+
                   } else {
                     final expiry =
                         _extractExpiryDate(

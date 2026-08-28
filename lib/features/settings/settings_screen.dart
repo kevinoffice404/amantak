@@ -115,6 +115,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // 5. شيت الرواتب والماليات
       Sheet salariesSheet = excel['الرواتب والماليات'];
       salariesSheet.appendRow(_createRow(['م', 'الاسم', 'الراتب الأساسي', 'إجمالي السلف', 'إجمالي الجزاءات', 'الصافي المستحق']));
+      final financialTotals = await DatabaseHelper.instance.getAllFinancialTotals();
       
       for (var row in guardsData) { 
         String name = row['name'].toString();
@@ -124,9 +125,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? double.tryParse(row['basic_salary'].toString()) ?? 9000.0 
             : 9000.0;
             
-        final totals = await DatabaseHelper.instance.getGuardFinancialTotals(name);
-        double totalAdvances = (totals['total_advances'] as num?)?.toDouble() ?? 0.0;
-        double totalPenalties = (totals['total_penalties'] as num?)?.toDouble() ?? 0.0;
+        final totals = financialTotals[name];
+        double totalAdvances = totals?['total_advances'] ?? 0.0;
+        double totalPenalties = totals?['total_penalties'] ?? 0.0;
         
         double netSalary = basicSalary - totalAdvances - totalPenalties;
 
@@ -336,7 +337,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Text('الإصدار: 1.0.0 (النسخة النهائية)', style: TextStyle(fontFamily: 'Cairo', color: AppColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12)),
               const SizedBox(height: 16),
               const Text(
-                'تم تصميم وتطوير هذا النظام ليكون أداة متكاملة واحترافية لإدارة أفراد الأمن، الحضور والانصراف، الجزاءات، والعهد. يعمل النظام محلياً بالكامل لضمان السرعة القصوى والأمان.', 
+                'تم تصميم النظام لإدارة أفراد الأمن والحضور والانصراف والجزاءات والعهد. يعتمد على قاعدة بيانات محلية للعمل دون إنترنت، مع مزامنة سحابية جزئية لبيانات الأفراد عند تهيئة Firebase.', 
                 style: TextStyle(fontFamily: 'Cairo', height: 1.5, color: AppColors.textDark), 
                 textAlign: TextAlign.center
               ),
@@ -362,7 +363,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('سياسة الخصوصية والأمان'),
           titleIcon: const Icon(Icons.privacy_tip_rounded, color: AppColors.primaryNavy),
           content: const Text(
-            'بيانات التطبيق تُحفظ محلياً على الهاتف ولا يحتوي هذا الإصدار على خدمة مزامنة أو خادم خاص بالتطبيق.\n\n'
+            'تُحفظ البيانات الأساسية محلياً على الهاتف، وتوجد مزامنة سحابية جزئية لبعض بيانات أفراد الأمن عند تهيئة Firebase. المزامنة الشاملة للحضور والجزاءات والعهد والماليات لم تُستكمل بعد.\n\n'
             'قاعدة البيانات المحلية ليست مشفّرة في هذا الإصدار؛ لذلك يجب حماية الهاتف نفسه واستخدام قفل شاشة قوي. '
             'كما أن مشاركة التقارير أو الصور عبر تطبيقات أخرى قد تنقل نسخة من البيانات خارج التطبيق.',
             style: TextStyle(fontFamily: 'Cairo', height: 1.5, color: AppColors.textDark),
@@ -430,13 +431,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildListTile(
             icon: Icons.info_outline_rounded,
             title: 'إصدار التطبيق',
-            subtitle: 'الإصدار 1.0.0 (Offline Mode)',
+            subtitle: 'الإصدار 1.0.0 (Local-first / مزامنة جزئية)',
             onTap: _showAboutDialog,
           ),
           _buildListTile(
             icon: Icons.security_rounded,
             title: 'سياسة الخصوصية والأمان',
-            subtitle: 'تخزين محلي بدون مزامنة مع خادم التطبيق',
+            subtitle: 'تخزين محلي مع مزامنة سحابية جزئية',
             onTap: _showPrivacyDialog,
           ),
         ],

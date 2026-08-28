@@ -32,18 +32,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     if (mounted) setState(() => isLoading = true);
     
     try {
-      final db = await DatabaseHelper.instance.database;
-      // التأكد من وجود جدول سجلات العهد لحفظ الحركات
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS equipment_history (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          equipment_id INTEGER,
-          guard_name TEXT,
-          action TEXT,
-          action_time TEXT
-        )
-      ''');
-
+      // الجداول تُنشأ وتُرقّى مركزياً داخل DatabaseHelper.
       // جلب الأجهزة والحراس معاً
       final rawEquipmentData = await DatabaseHelper.instance.getAllEquipment();
       final guards = await DatabaseHelper.instance.getAllGuards();

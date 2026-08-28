@@ -1,17 +1,21 @@
-# flutter_m3_template
+# Amantak — نظام إدارة الأمن
 
-A new Flutter project.
+تطبيق Flutter لإدارة أفراد الأمن، الحضور والانصراف، العهد، الجزاءات، السلف والرواتب، مع قاعدة SQLite محلية وتكامل Firebase جزئي.
 
-## Getting Started
+## تشغيل المشروع
 
-This project is a starting point for a Flutter application.
+```bash
+flutter clean
+flutter pub get
+flutter analyze
+flutter test
+flutter run
+```
 
-A few resources to get you started if this is your first Flutter project:
+لتحليل الأداء استخدم:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+flutter run --profile
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+راجع `PROJECT_AUDIT_AR.md` لمعرفة الإصلاحات المطبقة والمشاكل المتبقية وخطة استكمال Offline/Online.

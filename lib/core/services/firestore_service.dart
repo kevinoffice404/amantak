@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
@@ -15,10 +16,10 @@ class FirestoreService {
     return _instance;
   }
 
-  final FirebaseFirestore _db =
+  FirebaseFirestore get _db =>
       FirebaseFirestore.instance;
 
-  final FirebaseStorage _storage =
+  FirebaseStorage get _storage =>
       FirebaseStorage.instance;
 
   static const String _guardsCollection =
@@ -125,6 +126,14 @@ class FirestoreService {
         _cleanGuardId(guardId);
 
     try {
+      final storageBucket = Firebase.app().options.storageBucket;
+      if (storageBucket == null || storageBucket.trim().isEmpty) {
+        debugPrint(
+          'Firebase Storage is not configured: storageBucket is missing.',
+        );
+        return null;
+      }
+
       if (!await imageFile.exists()) {
         debugPrint(
           'Image does not exist: ${imageFile.path}',
@@ -257,7 +266,7 @@ class FirestoreService {
     String? idExpiryDate,
     String? idStatus,
 
-    double baseSalary = 0.0,
+    double baseSalary = 9000.0,
 
     String salaryType = 'monthly',
 

@@ -34,7 +34,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+    _pulseAnimation = Tween<double>(begin: 0.985, end: 1.015).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
   }
@@ -179,7 +179,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
     return GlassPage(
       title: 'تسجيل الحضور والانصراف',
-      child: Padding(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -229,27 +230,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
               child: _ClockWidget(), 
             ),
             
-            const Spacer(),
+            const SizedBox(height: 32),
 
             // زر البصمة المتحرك
-            AnimatedBuilder(
-              animation: _pulseAnimation,
-              builder: (context, child) {
-                return Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: buttonColor.withOpacity(0.3),
-                        spreadRadius: 20 * _pulseAnimation.value,
-                        blurRadius: 30,
-                      ),
-                    ],
-                  ),
-                  child: child,
-                );
-              },
-              child: GestureDetector(
+            ScaleTransition(
+              scale: _pulseAnimation,
+              child: RepaintBoundary(
+                child: GestureDetector(
                 onTap: () {
                   if (guardsList.isNotEmpty && !_isSubmitting) {
                     _toggleAttendance();
@@ -304,8 +291,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
                 ),
               ),
             ),
+            ),
 
-            const Spacer(),
+            const SizedBox(height: 32),
 
             // بطاقة حالة آخر عملية
             GlassSurface(
@@ -359,14 +347,27 @@ class _ClockWidgetState extends State<_ClockWidget> {
   void initState() {
     super.initState();
     _updateTime();
-    // المؤقت يعمل كل ثانية
-    _timer = Timer.periodic(const Duration(seconds: 1), (Timer t) => _updateTime());
+    _scheduleMinuteUpdates();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  void _scheduleMinuteUpdates() {
+    final now = DateTime.now();
+    final millisecondsToNextMinute =
+        60000 - (now.second * 1000 + now.millisecond);
+    _timer = Timer(Duration(milliseconds: millisecondsToNextMinute), () {
+      if (!mounted) return;
+      _updateTime();
+      _timer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => _updateTime(),
+      );
+    });
   }
 
   void _updateTime() {

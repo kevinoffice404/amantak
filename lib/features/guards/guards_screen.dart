@@ -154,6 +154,11 @@ class _GuardsScreenState extends State<GuardsScreen>
             }
           }
 
+          final cloudSalary = double.tryParse(
+                (guard['baseSalary'] ?? guard['basic_salary'] ?? '').toString(),
+              ) ??
+              0.0;
+
           final localGuard = <String, dynamic>{
             if (cloudId != null)
               'id': cloudId,
@@ -185,10 +190,11 @@ class _GuardsScreenState extends State<GuardsScreen>
 
             'id_status': status,
 
-            // بعد إضافة العمود إلى DatabaseHelper:
-            //
-            // 'national_id':
-            //     (guard['nationalId'] ?? '').toString(),
+            'national_id':
+                (guard['nationalId'] ?? '').toString(),
+
+            'basic_salary':
+                cloudSalary > 0 ? cloudSalary : 9000.0,
           };
 
           await DatabaseHelper.instance
@@ -1236,17 +1242,12 @@ class _GuardsScreenState extends State<GuardsScreen>
                                     savedBackPath;
 
                                 try {
-                                  savedFrontPath =
-                                      await _saveImageLocally(
-                                    frontImage!,
-                                    'front',
-                                  );
-
-                                  savedBackPath =
-                                      await _saveImageLocally(
-                                    backImage!,
-                                    'back',
-                                  );
+                                  final savedPaths = await Future.wait<String>([
+                                    _saveImageLocally(frontImage!, 'front'),
+                                    _saveImageLocally(backImage!, 'back'),
+                                  ]);
+                                  savedFrontPath = savedPaths[0];
+                                  savedBackPath = savedPaths[1];
 
                                   final expiry =
                                       selectedExpiryDate!;
@@ -1286,11 +1287,11 @@ class _GuardsScreenState extends State<GuardsScreen>
                                       'id_status':
                                           finalStatus,
 
-                                      // سيتم تفعيله بعد تعديل
-                                      // جدول guards:
-                                      //
-                                      // 'national_id':
-                                      //     nationalId,
+                                      'national_id':
+                                          nationalId,
+
+                                      'basic_salary':
+                                          9000.0,
                                     },
                                   );
 
@@ -1448,7 +1449,7 @@ class _GuardsScreenState extends State<GuardsScreen>
             idStatus:
                 idStatus,
 
-            baseSalary: 0,
+            baseSalary: 9000.0,
 
             frontImageUrl:
                 imageUrls[

@@ -5,7 +5,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart'; 
 
 import 'core/theme/app_colors.dart';
-import 'core/widgets/glass.dart';
 import 'features/splash/splash_screen.dart';
 
 // تحويل الدالة الرئيسية إلى async لتنتظر الاتصال بالسحابة قبل تشغيل التطبيق
@@ -45,7 +44,7 @@ class SecurityManagerApp extends StatelessWidget {
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       builder: (context, child) => Directionality(
         textDirection: TextDirection.rtl,
-        child: GlassBackground(child: child ?? const SizedBox.shrink()),
+        child: child ?? const SizedBox.shrink(),
       ),
       theme: ThemeData(
         useMaterial3: true,

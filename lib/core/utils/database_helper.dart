@@ -9,8 +9,8 @@ class DatabaseHelper {
   DatabaseHelper._init();
 
   static const _databaseName = 'security_manager.db';
-  // 🚨 تم رفع الإصدار إلى 4 لتطبيق التعديلات المالية 🚨
-  static const _databaseVersion = 4;
+  // الإصدار 5 يضيف الرقم القومي وسجل حركة العهد ويحسن الفهارس.
+  static const _databaseVersion = 5;
 
   Future<Database> get database async {
     if (_database != null && _database!.isOpen) return _database!;
@@ -41,6 +41,7 @@ class DatabaseHelper {
         name $textType,
         phone $textType,
         role $textType,
+        national_id $textNullable,
         id_front_image $textNullable,
         id_back_image $textNullable,
         id_expiry_date $textNullable,
@@ -78,13 +79,23 @@ class DatabaseHelper {
       )
     ''');
 
-    // جدول السلف الجديد
+    // جدول السلف
     await db.execute('''
       CREATE TABLE advances (
         id $idType,
         guard_name $textType,
         amount $textType,
         date $textType
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE equipment_history (
+        id $idType,
+        equipment_id INTEGER NOT NULL,
+        guard_name $textType,
+        action $textType,
+        action_time $textType
       )
     ''');
 
@@ -103,9 +114,6 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE guards ADD COLUMN id_status TEXT');
     }
 
-    if (oldVersion < 3) {
-      await _createIndexes(db);
-    }
 
     // 🚨 التحديث الجديد للإصدار 4 (إضافة السلف والراتب) 🚨
     if (oldVersion < 4) {
@@ -126,6 +134,23 @@ class DatabaseHelper {
         'ON advances (guard_name, date, id)',
       );
     }
+
+
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE guards ADD COLUMN national_id TEXT');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS equipment_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          equipment_id INTEGER NOT NULL,
+          guard_name TEXT NOT NULL,
+          action TEXT NOT NULL,
+          action_time TEXT NOT NULL
+        )
+      ''');
+    }
+
+    // ضمان إنشاء جميع الفهارس حتى عند الترقية من إصدارات قديمة.
+    await _createIndexes(db);
   }
 
   Future<void> _createIndexes(Database db) async {
@@ -134,12 +159,24 @@ class DatabaseHelper {
       'ON attendance (guard_name, action_date, id)',
     );
     await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_attendance_date_type_guard '
+      'ON attendance (action_date, action_type, guard_name)',
+    );
+    await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_penalties_guard_date '
       'ON penalties (guard_name, date, id)',
     );
     await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_advances_guard_date '
+      'ON advances (guard_name, date, id)',
+    );
+    await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_equipment_status '
       'ON equipment (status)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_equipment_history_equipment '
+      'ON equipment_history (equipment_id, id)',
     );
   }
 
@@ -248,8 +285,12 @@ class DatabaseHelper {
       END
       WHERE id_expiry_date IS NOT NULL
         AND id_expiry_date != ''
+        AND COALESCE(id_status, '') != CASE
+          WHEN id_expiry_date < ? THEN 'منتهية'
+          ELSE 'سارية'
+        END
       ''',
-      [today],
+      [today, today],
     );
   }
 
@@ -275,25 +316,46 @@ class DatabaseHelper {
   // 3. جلب جميع البيانات المالية للحارس (لخصمها من الراتب)
   Future<Map<String, double>> getGuardFinancialTotals(String guardName) async {
     final db = await database;
-    
-    // جلب وجمع الجزاءات
-    final penalties = await db.query('penalties', columns: ['amount'], where: 'guard_name = ?', whereArgs: [guardName]);
-    double totalPenalties = 0;
-    for (var p in penalties) {
-      totalPenalties += double.tryParse(p['amount'].toString()) ?? 0.0;
-    }
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        COALESCE((SELECT SUM(CAST(amount AS REAL)) FROM penalties WHERE guard_name = ?), 0) AS total_penalties,
+        COALESCE((SELECT SUM(CAST(amount AS REAL)) FROM advances WHERE guard_name = ?), 0) AS total_advances
+      ''',
+      [guardName, guardName],
+    );
 
-    // جلب وجمع السلف
-    final advances = await db.query('advances', columns: ['amount'], where: 'guard_name = ?', whereArgs: [guardName]);
-    double totalAdvances = 0;
-    for (var a in advances) {
-      totalAdvances += double.tryParse(a['amount'].toString()) ?? 0.0;
-    }
-
+    final row = rows.first;
     return {
-      'total_penalties': totalPenalties,
-      'total_advances': totalAdvances,
+      'total_penalties': (row['total_penalties'] as num?)?.toDouble() ?? 0.0,
+      'total_advances': (row['total_advances'] as num?)?.toDouble() ?? 0.0,
     };
+  }
+
+  /// يجلب الإجماليات المالية لكل الأفراد باستعلامين فقط بدلاً من N+1.
+  Future<Map<String, Map<String, double>>> getAllFinancialTotals() async {
+    final db = await database;
+    final result = <String, Map<String, double>>{};
+
+    final penalties = await db.rawQuery(
+      'SELECT guard_name, COALESCE(SUM(CAST(amount AS REAL)), 0) AS total FROM penalties GROUP BY guard_name',
+    );
+    for (final row in penalties) {
+      final name = row['guard_name']?.toString() ?? '';
+      result.putIfAbsent(name, () => {'total_penalties': 0.0, 'total_advances': 0.0});
+      result[name]!['total_penalties'] = (row['total'] as num?)?.toDouble() ?? 0.0;
+    }
+
+    final advances = await db.rawQuery(
+      'SELECT guard_name, COALESCE(SUM(CAST(amount AS REAL)), 0) AS total FROM advances GROUP BY guard_name',
+    );
+    for (final row in advances) {
+      final name = row['guard_name']?.toString() ?? '';
+      result.putIfAbsent(name, () => {'total_penalties': 0.0, 'total_advances': 0.0});
+      result[name]!['total_advances'] = (row['total'] as num?)?.toDouble() ?? 0.0;
+    }
+
+    return result;
   }
 
   // -------------------- Smart Alerts (التنبيهات الذكية) --------------------
@@ -305,6 +367,7 @@ class DatabaseHelper {
     final today = DateTime.now();
 
     final guards = await db.query('guards');
+    final financialTotals = await getAllFinancialTotals();
     for (var guard in guards) {
       String name = guard['name'].toString();
       
@@ -339,8 +402,8 @@ class DatabaseHelper {
           ? double.tryParse(guard['basic_salary'].toString()) ?? 9000.0 
           : 9000.0;
           
-      final totals = await getGuardFinancialTotals(name);
-      double totalAdvances = totals['total_advances'] ?? 0.0;
+      final totals = financialTotals[name];
+      double totalAdvances = totals?['total_advances'] ?? 0.0;
       
       if (totalAdvances > (basicSalary / 2)) {
         alerts.add({
@@ -423,6 +486,7 @@ class DatabaseHelper {
       await txn.delete('equipment');
       await txn.delete('penalties');
       await txn.delete('advances'); // تفريغ جدول السلف
+      await txn.delete('equipment_history');
       await txn.delete('guards');
     });
 

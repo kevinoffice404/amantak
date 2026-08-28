@@ -7,6 +7,6 @@ void main() {
     await tester.pumpWidget(const SecurityManagerApp());
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Security Guard Manager'), findsOneWidget);
+    expect(find.text('نظام إدارة الأمن'), findsOneWidget);
   });
 }

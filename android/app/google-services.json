@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "383666012257",
+    "firebase_url": "https://amantak2-30b21-default-rtdb.firebaseio.com",
+    "project_id": "amantak2-30b21",
+    "storage_bucket": "amantak2-30b21.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:383666012257:android:86021cc251a4717374ea20",
+        "android_client_info": {
+          "package_name": "com.example.myflutter.amantak"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAij1sQLLx5h4K8jDlWr2InFn7S7jxf8Os"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

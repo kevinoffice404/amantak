@@ -34,7 +34,7 @@ jobs:
         run: flutter pub get
 
       - name: Analyze
-        run: dart analyze --no-fatal-warnings --no-fatal-infos
+        run: dart analyze --no-fatal-warnings
 
       - name: Run tests
         run: flutter test
@@ -49,4 +49,3 @@ jobs:
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-          

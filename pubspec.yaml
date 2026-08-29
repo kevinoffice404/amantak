@@ -32,15 +32,8 @@ dependencies:
   # التقارير Excel / PDF / المشاركة
   # ============================================================
   excel: 4.0.6
-
-  # إصدار متوافق مع package:web الحديث
   share_plus: 10.1.4
-
-  # مهم:
-  # لا تستخدم ^3.12.0 حتى لا يقوم Pub باختيار 3.13.0
   pdf: 3.12.0
-
-  # النسخة الحديثة لحل مشكلة compileSdk 30
   printing: 5.14.3
 
   # ============================================================
@@ -49,11 +42,8 @@ dependencies:
   firebase_core: 3.15.2
   cloud_firestore: 5.6.12
   firebase_storage: 12.4.10
-
-  # ============================================================
-  # OCR
-  # ============================================================
-  google_mlkit_text_recognition: ^0.12.0
+  cloud_functions: 5.6.2
+  firebase_app_check: 0.3.2+10
 
 dev_dependencies:
   flutter_test:
@@ -62,9 +52,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 flutter:
-  # مهم جداً لأن المشروع يستخدم ملفات الترجمة
   generate: true
-
   uses-material-design: true
 
   fonts:
@@ -75,6 +63,5 @@ flutter:
         - asset: assets/fonts/Cairo-Bold.ttf
           weight: 700
 
-  # الاحتفاظ بمجلد الخطوط
   assets:
     - assets/fonts/

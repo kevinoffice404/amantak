@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/services/egyptian_id_ocr_service.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/database_helper.dart';
@@ -27,6 +27,7 @@ class _GuardsScreenState extends State<GuardsScreen>
     with AutomaticKeepAliveClientMixin<GuardsScreen> {
   final ImagePicker _picker = ImagePicker();
   final FirestoreService _firestoreService = FirestoreService();
+  final EgyptianIdOcrService _idOcrService = EgyptianIdOcrService();
 
   List<Map<String, dynamic>> guardsList = [];
 
@@ -320,28 +321,6 @@ class _GuardsScreenState extends State<GuardsScreen>
     return result;
   }
 
-  String? _extractNationalId(String text) {
-    final normalized = _normalizeDigits(text);
-    final compact = normalized.replaceAll(RegExp(r'[\s\-]'), '');
-
-    for (final match in RegExp(r'[23]\d{13}').allMatches(compact)) {
-      final hasDigitBefore =
-          match.start > 0 &&
-          RegExp(r'\d')
-              .hasMatch(compact.substring(match.start - 1, match.start));
-      final hasDigitAfter =
-          match.end < compact.length &&
-          RegExp(r'\d').hasMatch(compact.substring(match.end, match.end + 1));
-
-      if (hasDigitBefore || hasDigitAfter) continue;
-
-      final candidate = match.group(0)!;
-      if (_isValidNationalId(candidate)) return candidate;
-    }
-
-    return null;
-  }
-
   bool _isValidNationalId(String value) {
     if (!RegExp(r'^[23]\d{13}$').hasMatch(value)) return false;
 
@@ -354,44 +333,6 @@ class _GuardsScreenState extends State<GuardsScreen>
     return birthDate != null &&
         !DateUtils.dateOnly(birthDate)
             .isAfter(DateUtils.dateOnly(DateTime.now()));
-  }
-
-  DateTime? _extractExpiryDate(String text) {
-    final normalized = _normalizeDigits(text);
-    final foundDates = <DateTime>[];
-
-    final yearFirst = RegExp(r'(\d{4})[\-/\.](\d{1,2})[\-/\.](\d{1,2})');
-
-    for (final match in yearFirst.allMatches(normalized)) {
-      final date = _safeDate(
-        int.tryParse(match.group(1)!),
-        int.tryParse(match.group(2)!),
-        int.tryParse(match.group(3)!),
-      );
-      if (date != null) foundDates.add(date);
-    }
-
-    final dayFirst = RegExp(r'(\d{1,2})[\-/\.](\d{1,2})[\-/\.](\d{4})');
-
-    for (final match in dayFirst.allMatches(normalized)) {
-      final date = _safeDate(
-        int.tryParse(match.group(3)!),
-        int.tryParse(match.group(2)!),
-        int.tryParse(match.group(1)!),
-      );
-      if (date != null) foundDates.add(date);
-    }
-
-    if (foundDates.isEmpty) return null;
-
-    foundDates.sort((a, b) => a.compareTo(b));
-    final today = DateUtils.dateOnly(DateTime.now());
-    final futureDates = foundDates
-        .where((date) => !DateUtils.dateOnly(date).isBefore(today))
-        .toList();
-
-    // تاريخ الانتهاء غالباً هو أحدث تاريخ ظاهر على البطاقة.
-    return futureDates.isNotEmpty ? futureDates.last : foundDates.last;
   }
 
   DateTime? _safeDate(int? year, int? month, int? day) {
@@ -533,16 +474,85 @@ class _GuardsScreenState extends State<GuardsScreen>
     var canCloseDialog = true;
     Future<void>? activeTask;
 
-    // ML Kit يدعم النص اللاتيني، ونستخدمه هنا أساساً للأرقام والتواريخ.
-    final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-
     try {
       await showGlassDialog(
         context: context,
         builder: (dialogContext) {
           return StatefulBuilder(
             builder: (dialogContext, setDialogState) {
-              Future<void> pickAndAnalyzeImage(bool isFront) async {
+              Future<void> analyzeCapturedCard() async {
+                final currentFront = frontImage;
+                final currentBack = backImage;
+
+                if (currentFront == null || currentBack == null) return;
+
+                try {
+                  final result = await _idOcrService.analyzeCard(
+                    frontImage: currentFront,
+                    backImage: currentBack,
+                  );
+
+                  if (!dialogActive || !dialogContext.mounted) return;
+
+                  var fieldsApplied = 0;
+
+                  final nationalId = result.nationalId;
+                  if (nationalId != null && _isValidNationalId(nationalId)) {
+                    nationalIdController.text = nationalId;
+                    fieldsApplied++;
+                  }
+
+                  final fullName = result.fullName;
+                  if (fullName != null && fullName.trim().isNotEmpty) {
+                    nameController.text = fullName.trim();
+                    fieldsApplied++;
+                  }
+
+                  final expiryDate = result.expiryDate;
+                  if (expiryDate != null) {
+                    selectedExpiryDate = expiryDate;
+                    fieldsApplied++;
+                  }
+
+                  setDialogState(() {});
+
+                  if (fieldsApplied == 3) {
+                    _showMessage(
+                      'تم استخراج بيانات البطاقة. راجعها قبل الحفظ.',
+                      Colors.green,
+                    );
+                  } else if (fieldsApplied > 0) {
+                    final missing = result.missingFields.join(' و');
+                    _showMessage(
+                      missing.isEmpty
+                          ? 'تم استخراج بعض البيانات. راجعها قبل الحفظ.'
+                          : 'تم استخراج بعض البيانات. أدخل $missing يدوياً.',
+                      Colors.orange,
+                    );
+                  } else {
+                    _showMessage(
+                      'لم نتمكن من قراءة بيانات واضحة. أعد التصوير بإضاءة أفضل أو أدخلها يدوياً.',
+                      Colors.orange,
+                    );
+                  }
+                } on EgyptianIdOcrException catch (e) {
+                  if (dialogActive && dialogContext.mounted) {
+                    _showMessage(e.userMessage, Colors.orange);
+                  }
+                } catch (e, stackTrace) {
+                  debugPrint('Cloud OCR error: $e');
+                  debugPrintStack(stackTrace: stackTrace);
+
+                  if (dialogActive && dialogContext.mounted) {
+                    _showMessage(
+                      'تعذر تحليل البطاقة حالياً. يمكنك إدخال البيانات يدوياً.',
+                      Colors.orange,
+                    );
+                  }
+                }
+              }
+
+              Future<void> pickIdImage(bool isFront) async {
                 if (isAnalyzing || isDialogSaving || !dialogActive) return;
 
                 setDialogState(() {
@@ -553,9 +563,9 @@ class _GuardsScreenState extends State<GuardsScreen>
                 try {
                   final pickedFile = await _picker.pickImage(
                     source: ImageSource.camera,
-                    maxWidth: 1600,
-                    maxHeight: 1600,
-                    imageQuality: 75,
+                    maxWidth: 2048,
+                    maxHeight: 2048,
+                    imageQuality: 85,
                   );
 
                   if (pickedFile == null ||
@@ -573,35 +583,22 @@ class _GuardsScreenState extends State<GuardsScreen>
                     }
                   });
 
-                  final recognizedText = await textRecognizer.processImage(
-                    InputImage.fromFilePath(pickedFile.path),
-                  );
-
-                  if (!dialogActive || !dialogContext.mounted) return;
-
-                  if (isFront) {
-                    final nationalId = _extractNationalId(recognizedText.text);
-                    if (nationalId != null) {
-                      nationalIdController.text = nationalId;
-                    }
+                  if (frontImage != null && backImage != null) {
+                    await analyzeCapturedCard();
                   } else {
-                    final expiry = _extractExpiryDate(recognizedText.text);
-                    if (expiry != null) {
-                      selectedExpiryDate = expiry;
-                    }
+                    _showMessage(
+                      isFront
+                          ? 'تم التقاط الوجه الأمامي. التقط الوجه الخلفي لاستكمال التحليل.'
+                          : 'تم التقاط الوجه الخلفي. التقط الوجه الأمامي لاستكمال التحليل.',
+                      Colors.blue,
+                    );
                   }
-
-                  setDialogState(() {});
-                  _showMessage(
-                    'تم تحليل البطاقة. راجع البيانات قبل الحفظ.',
-                    Colors.green,
-                  );
                 } catch (e, stackTrace) {
-                  debugPrint('OCR error: $e');
+                  debugPrint('Image capture error: $e');
                   debugPrintStack(stackTrace: stackTrace);
 
                   _showMessage(
-                    'تعذر قراءة البطاقة تلقائياً. يمكنك إدخال البيانات يدوياً.',
+                    'تعذر التقاط الصورة. حاول مرة أخرى.',
                     Colors.orange,
                   );
                 } finally {
@@ -776,7 +773,7 @@ class _GuardsScreenState extends State<GuardsScreen>
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'التقط وجهي البطاقة لاستخراج الرقم القومي وتاريخ الانتهاء تلقائياً، ثم راجع البيانات.',
+                                  'التقط وجهي البطاقة بوضوح لاستخراج الاسم والرقم القومي وتاريخ الانتهاء سحابياً، ثم راجع البيانات.',
                                   style: TextStyle(
                                     fontFamily: 'Cairo',
                                     fontSize: 12,
@@ -795,8 +792,7 @@ class _GuardsScreenState extends State<GuardsScreen>
                                 image: frontImage,
                                 label: 'الوجه الأمامي *',
                                 enabled: !isAnalyzing && !isDialogSaving,
-                                onTap: () =>
-                                    startTask(() => pickAndAnalyzeImage(true)),
+                                onTap: () => startTask(() => pickIdImage(true)),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -806,7 +802,7 @@ class _GuardsScreenState extends State<GuardsScreen>
                                 label: 'الوجه الخلفي *',
                                 enabled: !isAnalyzing && !isDialogSaving,
                                 onTap: () =>
-                                    startTask(() => pickAndAnalyzeImage(false)),
+                                    startTask(() => pickIdImage(false)),
                               ),
                             ),
                           ],
@@ -989,7 +985,7 @@ class _GuardsScreenState extends State<GuardsScreen>
       dialogActive = false;
 
       // إذا أُغلقت النافذة من النظام ننتظر أي عملية جارية قبل التخلص
-      // من الـ controllers أو TextRecognizer.
+      // من وحدات التحكم.
       final pendingTask = activeTask;
       if (pendingTask != null) {
         try {
@@ -998,13 +994,6 @@ class _GuardsScreenState extends State<GuardsScreen>
           debugPrint('Pending guard dialog task failed: $e');
           debugPrintStack(stackTrace: stackTrace);
         }
-      }
-
-      try {
-        await textRecognizer.close();
-      } catch (e, stackTrace) {
-        debugPrint('Failed closing text recognizer: $e');
-        debugPrintStack(stackTrace: stackTrace);
       }
 
       nameController.dispose();

@@ -1287,7 +1287,7 @@ class _GuardsScreenState extends State<GuardsScreen>
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         physics: const AlwaysScrollableScrollPhysics(),
-        scrollCacheExtent: 450,
+        scrollCacheExtent: const ScrollCacheExtent.pixels(450),
         itemCount: guardsList.length,
         itemBuilder: (context, index) {
           final person = guardsList[index];

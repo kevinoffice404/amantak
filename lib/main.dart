@@ -6,7 +6,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/theme/app_colors.dart';
 import 'features/splash/splash_screen.dart';
-import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,11 +13,9 @@ Future<void> main() async {
   Object? firebaseInitializationError;
 
   try {
-    // يولّد flutterfire configure قيماً مستقلة وصحيحة لكل منصة.
-    // لا تضع FirebaseOptions الخاصة بتطبيق Web داخل نسخة Android.
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    // على Android تُقرأ الإعدادات تلقائياً من:
+    // android/app/google-services.json
+    await Firebase.initializeApp();
   } catch (e, stackTrace) {
     firebaseInitializationError = e;
     debugPrint('Firebase initialization failed: $e');
@@ -169,8 +166,8 @@ class _FirebaseConfigurationErrorScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 10),
                 Text(
-                  'تأكد من تشغيل flutterfire configure ووجود ملف '
-                  'lib/firebase_options.dart الصحيح، ثم أعد بناء التطبيق.',
+                  'تأكد من وجود ملف android/app/google-services.json '
+                  'الصحيح، ثم أعد بناء التطبيق.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Cairo',

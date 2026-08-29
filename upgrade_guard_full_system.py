@@ -1,4 +1,114 @@
+from pathlib import Path
+import shutil
+import datetime
 
+ROOT = Path("lib")
+
+print("=== Guard System Upgrade Started ===")
+
+# إنشاء مجلد النسخ الاحتياطية
+backup_dir = Path(
+    "guard_upgrade_backup_" +
+    datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+)
+
+backup_dir.mkdir(exist_ok=True)
+
+files_to_backup = [
+    "lib/features/guards/guards_screen.dart",
+    "lib/features/guards/edit_guard_screen.dart",
+    "lib/features/guards/guard_details_screen.dart",
+    "lib/features/guards/guard_records_screen.dart",
+    "lib/core/services/firestore_service.dart",
+]
+
+for file in files_to_backup:
+    src = Path(file)
+
+    if src.exists():
+        dst = backup_dir / src.name
+        shutil.copy(src, dst)
+        print("Backup:", file)
+
+print("Backup completed:", backup_dir)
+
+
+# إنشاء خدمة فحص البطاقة
+scanner_file = Path(
+    "lib/core/services/id_card_scanner_service.dart"
+)
+
+scanner_file.parent.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+scanner_code = r'''
+import 'dart:io';
+
+import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
+
+class IdCardScannerService {
+
+  Future<File?> scanIdCard() async {
+
+    try {
+
+      final scanner =
+          DocumentScanner(
+            options: DocumentScannerOptions(
+              documentFormat:
+                  DocumentFormat.jpeg,
+              mode:
+                  ScannerMode.full,
+              pageLimit: 2,
+            ),
+          );
+
+
+      final result =
+          await scanner.scanDocument();
+
+
+      if (result.images.isEmpty) {
+        return null;
+      }
+
+
+      return File(
+        result.images.first,
+      );
+
+
+    } catch (e) {
+
+      return null;
+
+    }
+
+  }
+
+}
+'''
+
+scanner_file.write_text(
+    scanner_code,
+    encoding="utf-8"
+)
+
+print("Created:", scanner_file)
+
+print("=== Part 1 completed ===")
+
+# =========================================================
+# Part 2 : Replace edit_guard_screen.dart
+# =========================================================
+
+edit_file = Path(
+    "lib/features/guards/edit_guard_screen.dart"
+)
+
+edit_code = r'''
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -526,3 +636,95 @@ class _EditGuardScreenState
 
 
 }
+'''
+
+
+edit_file.write_text(
+    edit_code,
+    encoding="utf-8"
+)
+
+
+print(
+    "Updated edit_guard_screen.dart"
+)
+
+
+# =========================================================
+# Part 3 : Prepare guards_screen OCR migration
+# =========================================================
+
+guards_file = Path(
+    "lib/features/guards/guards_screen.dart"
+)
+
+if guards_file.exists():
+
+    text = guards_file.read_text(
+        encoding="utf-8"
+    )
+
+
+    # إضافة import للخدمة الجديدة
+    old_import = (
+        "import '../../core/services/firestore_service.dart';"
+    )
+
+    new_import = (
+        "import '../../core/services/firestore_service.dart';\n"
+        "import '../../core/services/id_card_scanner_service.dart';"
+    )
+
+
+    if old_import in text and "id_card_scanner_service.dart" not in text:
+
+        text = text.replace(
+            old_import,
+            new_import
+        )
+
+
+    # إضافة instance للخدمة
+    old_instance = (
+        "final FirestoreService _firestoreService = FirestoreService();"
+    )
+
+    new_instance = (
+        "final FirestoreService _firestoreService = FirestoreService();\n"
+        "final IdCardScannerService _idCardScannerService = IdCardScannerService();"
+    )
+
+
+    if old_instance in text and "_idCardScannerService" not in text:
+
+        text = text.replace(
+            old_instance,
+            new_instance
+        )
+
+
+    guards_file.write_text(
+        text,
+        encoding="utf-8"
+    )
+
+
+    print(
+        "guards_screen import prepared"
+    )
+
+
+else:
+
+    print(
+        "guards_screen.dart not found"
+    )
+
+
+print(
+    "=== Part 3 completed ==="
+)
+
+print(
+    "Now run flutter analyze from GitHub Actions"
+)

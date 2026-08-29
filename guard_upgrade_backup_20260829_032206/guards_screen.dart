@@ -9,7 +9,6 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/services/firestore_service.dart';
-import '../../core/services/id_card_scanner_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/database_helper.dart';
 import '../../core/widgets/glass.dart' hide GlassActionButton;
@@ -27,7 +26,6 @@ class _GuardsScreenState extends State<GuardsScreen>
     with AutomaticKeepAliveClientMixin<GuardsScreen> {
   final ImagePicker _picker = ImagePicker();
   final FirestoreService _firestoreService = FirestoreService();
-final IdCardScannerService _idCardScannerService = IdCardScannerService();
 
   List<Map<String, dynamic>> guardsList = [];
 
